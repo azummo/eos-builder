@@ -1,25 +1,33 @@
-EVB_OBJS = ds.o listener.o shipper.o event_builder.o
-EVB_SRCS = $(EVB_OBJS:.o=.c)
-CLI_OBJS = client.o ds.o
-CLI_SRCS = $(CLI_OBJS:.o=.c)
+OBJ_DIR=./build
+EVB_SRCS = $(subst src/,,$(wildcard src/*.c))
+EVB_OBJS = $(EVB_SRCS:%.c=$(OBJ_DIR)/%.o)
 
-INCDIR = include
+INCDIR = ./include
 CFLAGS = -I$(INCDIR)
-CXXFLAGS = -g 
 LFLAGS = -L/usr/local/lib
 
-CC = g++ -g
+CC = gcc $(FLAGS)
 
 LIBS = -ljemalloc -pthread -lrt
 
-all: event_builder client
+EXE = ./bin/evb
 
-event_builder: $(EVB_OBJS)
-	$(CC) -o $@ $(EVB_OBJS) $(LFLAGS) $(LIBS) $(INCLUDE) $(CXXFLAGS)
+all: build_dirs includes $(EVB_OBJS) $(EXE)
 
-client: $(CLI_OBJS)
-	$(CC) -o $@ $(CLI_OBJS) $(LFLAGS) $(LIBS) $(INCLUDE) $(CXXFLAGS)
+build_dirs:
+	@mkdir -p build
+	@mkdir -p bin
+	@mkdir -p include/evb
+
+includes: build_dirs
+	@find ./src -name "*.h" -type f -exec cp {} ./include/evb \;
+
+$(EXE): $(EVB_OBJS)
+	$(CC) -o $@ $(EVB_OBJS) $(LFLAGS) $(LIBS) $(INCLUDE)
+
+$(OBJ_DIR)/%.o: ./src/%.c includes
+	$(CC) -c -o $@ $< $(CFLAGS) $(INCLUDE) $(CXXFLAGS)
 
 clean: 
-	-$(RM) core *.o
+	-$(RM) build/*.o $(EXE) include/evb/*
 
