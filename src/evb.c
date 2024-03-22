@@ -1,3 +1,4 @@
+#include <signal.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <stdint.h>
@@ -20,9 +21,11 @@
 #define EVENT_HEADER_BUFFER_SIZE 50
 #define RUN_HEADER_BUFFER_SIZE 20
 
-Buffer* event_buffer;
-Buffer* event_header_buffer;
-Buffer* run_header_buffer;
+//Buffer* event_buffer;
+//Buffer* event_header_buffer;
+//Buffer* run_header_buffer;
+
+Event* events = NULL;
 
 int main(int argc, char *argv[])
 {
@@ -35,15 +38,15 @@ int main(int argc, char *argv[])
         port = atoi(argv[1]);
 
     // initialization
-    buffer_alloc(&event_buffer, EVENT_BUFFER_SIZE);
-    buffer_alloc(&event_header_buffer, EVENT_HEADER_BUFFER_SIZE);
-    buffer_alloc(&run_header_buffer, RUN_HEADER_BUFFER_SIZE);
+    //buffer_alloc(&event_buffer, EVENT_BUFFER_SIZE);
+    //buffer_alloc(&event_header_buffer, EVENT_HEADER_BUFFER_SIZE);
+    //buffer_alloc(&run_header_buffer, RUN_HEADER_BUFFER_SIZE);
 
     // fake RHDR for testing
     RHDR* rh = (RHDR*) malloc(sizeof(RHDR));
     rh->run_id = 123456;
     rh->first_event_id = 0;
-    buffer_push(run_header_buffer, RUN_HEADER, rh);
+    //buffer_push(run_header_buffer, RUN_HEADER, rh);
 
     // launch listener (input) and shipper (output) threads
     pthread_t tlistener;

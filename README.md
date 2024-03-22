@@ -1,8 +1,8 @@
-pennbuilder Event Builder
+eos-builder Event Builder
 =========================
 Introduction
 ------------
-pennbuilder is a fast, lightweight event builder originally developed for the
+eos-builder is a fast, lightweight event builder originally developed for the
 SNO+ experiment. It was developed primarily for support of monitoring tool
 development, since those tools require built data. Designed from the ground up
 for speed, it makes use of threading, the jemalloc thread-optimized memory

@@ -4,17 +4,48 @@
 #include <pthread.h>
 #include <stdint.h>
 #include <time.h>
+#include <evb/uthash.h>
 
-/** Data structure structs 
- *
- *  Largely copied from RAT::DS:PackedEvent
- */
+/** Data structure structs */
 
+#define NDIGITIZERS 1
 #define NPMTS 19 * 16 * 32
 #define MAX_ROPES 10
 
+
 uint32_t get_bits(uint32_t x, uint32_t position, uint32_t count);
 
+/**
+ * @struct ChannelData
+ * @
+ */
+typedef struct ChannelData {
+  uint32_t chID;
+  uint32_t offset;
+  uint32_t threshold;
+  float dynamic_range;
+  uint16_t samples[20][500];
+  uint16_t patterns[20];
+} ChannelData;
+
+/**
+ * @struct DigitizerData
+ * @
+ */
+typedef struct DigitizerData {
+  uint16_t type;
+  uint16_t bits;
+  uint16_t samples;
+  uint16_t nEvents;
+  float ns_sample;
+  uint32_t counters[20];
+  uint32_t timetags[20];
+  uint16_t exttimetags[20];
+
+  ChannelData channels[16];
+} DigitizerData;
+
+/*
 /// PMTBundle contains raw PMT data packed into 3 32-bit words (96 bits)
 typedef struct
 {
@@ -40,26 +71,31 @@ typedef struct
     uint32_t header[4];
     uint32_t data[8][55]; // v1720 packs data like so (2.5 samples/word)
 } CAENData;
+*/
 
-/// Event: contains all data for a single SNO+ detector event
+
+/// Event: contains all data for a single Eos detector event
 typedef struct
 {
-    PMTBundle pmt[NPMTS];
-    MTCData mtc;
-    CAENData caen;
+    int id;  // Key = timetag / 10
+    int timetag;
     uint32_t gtid;
+
+    uint32_t caen_status;
+
+    DigitizerData caen[NDIGITIZERS];
+    //PTBData ptb;
     clock_t builder_arrival_time;
     uint32_t run_id;
     uint32_t subrun_id;
     uint32_t nhits;
-    uint32_t evorder;
-    uint64_t runmask;
-    uint8_t pack_ver;
     uint8_t mcflag;
     uint8_t datatype;
-    uint8_t clockstat;
+
+    UT_hash_handle hh;
 } Event;
 
+/*
 /// EPED: event-level header with pedestal data
 typedef struct
 {
@@ -90,7 +126,7 @@ typedef struct
     uint32_t event_id;  // GTID of first events in this bank's validity
     uint32_t wun_id;    // Double-check on the run
 } TRIG;
-
+*/
 /// RHDR: run header
 typedef struct
 {
@@ -106,7 +142,7 @@ typedef struct
     uint32_t valid_event_id;
     uint32_t run_id;
 } RHDR;
-
+/*
 /// CAST: run-level header with calibration source orientation
 typedef struct
 {
@@ -135,6 +171,7 @@ typedef struct
     float av_roll[3];  // roll, pitch and yaw
     float av_rope_length[7];
 } CAAC;
+*/
 
 /** Ring FIFO buffer
  *
@@ -190,8 +227,13 @@ int buffer_insert(Buffer* b, unsigned int id, RecordType type, void* pk);
 
 int buffer_isfull(Buffer* b);
 int buffer_isempty(Buffer* b);
+
 int buffer_push(Buffer* b, RecordType type, void* key);
 int buffer_pop(Buffer* b, RecordType* type, void** pk);
+
+Event* event_at(uint32_t key);
+void event_push(uint32_t key, Event* s);
+Event* event_pop(uint32_t key);
 
 #endif
 

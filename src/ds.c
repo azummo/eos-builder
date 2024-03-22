@@ -6,6 +6,9 @@
 #include <jemalloc/jemalloc.h>
 #include <evb/ds.h>
 
+extern Event* events;
+
+
 uint32_t get_bits(uint32_t x, uint32_t position, uint32_t count)
 {
   uint32_t shifted = x >> position;
@@ -13,9 +16,10 @@ uint32_t get_bits(uint32_t x, uint32_t position, uint32_t count)
   return shifted & mask;
 }
 
+/*
 void pmtbundle_print(PMTBundle* p)
 {
-    printf("PMTBundle at %p:\n", p);
+    printf("PMTBundle at %p:\n", (void*) p);
     printf("  pmtid =  %i:\n", pmtbundle_pmtid(p));
     printf("  gtid  =  %i:\n", pmtbundle_gtid(p));
     int i;
@@ -38,7 +42,7 @@ uint32_t pmtbundle_pmtid(PMTBundle* p)
     int icrate = get_bits(p->word[0], 21, 5);
     return (512*icrate + 32*icard + ichan);
 }
-
+*/
 
 Buffer* buffer_alloc(Buffer** pb, int size)
 {
@@ -49,7 +53,7 @@ Buffer* buffer_alloc(Buffer** pb, int size)
     int mem_allocated = sizeof(Buffer) + size * (sizeof(void*) + sizeof(RecordType) + sizeof(pthread_mutex_t));
     if(*pb) {
         printf("Initializing buffer: keys[%d] (%d KB allocated)\n", size, mem_allocated/1000);
-        bzero(*pb, sizeof(*pb));
+        bzero(*pb, sizeof(Buffer));
         (*pb)->size = size;
         (*pb)->write = 0;
         (*pb)->read  = 0;
@@ -116,7 +120,7 @@ int buffer_pop(Buffer* b, RecordType* type, void** pk)
 
 void buffer_status(Buffer* b)
 {
-    printf("Buffer at %p:\n", b);
+    printf("Buffer at %p:\n", (void*) b);
     printf("  write: %lu, read: %lu, full: %d, empty: %d\n", b->write,
                                                              b->read,
                                                              buffer_isfull(b),
@@ -175,5 +179,24 @@ int buffer_insert(Buffer* b, unsigned int id, RecordType type, void* pk)
     }
     else
         return 1;
+}
+
+Event* event_at(uint32_t key) {
+  Event* s;
+  HASH_FIND_INT(events, &key, s);
+  //printf("event_at %i, size=%u\n", (int) key, HASH_COUNT(events));
+  return s;
+}
+
+void event_push(uint32_t key, Event* s) {
+  HASH_ADD_INT(events, timetag, s);
+  //printf("event_push %i, size=%u\n", (int) key, HASH_COUNT(events));
+}
+
+Event* event_pop(uint32_t key) {
+  Event* s = event_at(key);
+  HASH_DEL(events, s);
+  //printf("event_pop %i, size=%u\n", (int) key, HASH_COUNT(events));
+  return s;
 }
 

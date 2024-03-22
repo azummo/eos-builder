@@ -1,3 +1,4 @@
+#include <signal.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <stdio.h>
@@ -13,9 +14,9 @@
 #include <evb/shipper.h>
 #include <evb/ds.h>
 
-extern Buffer* event_buffer;
-extern Buffer* event_header_buffer;
-extern Buffer* run_header_buffer;
+//extern Buffer* event_buffer;
+//extern Buffer* event_header_buffer;
+//extern Buffer* run_header_buffer;
 
 void handler(int signal);
 
@@ -32,12 +33,13 @@ void* shipper(void* ptr)
 
     signal(SIGINT, &handler);
     while(1) {
+/*
         time_now = clock();
         Event* etemp = (Event*) event_buffer->keys[event_buffer->read];
 
         // skipped gtid timeout
         if(!etemp) {
-            if((float)(time_now - time_last_shipped) / CLOCKS_PER_SEC > 0.5) {
+            if((float)(time_now - time_last_shipped) / CLOCKS_PER_SEC > 5) {
                 RecordType rtemp;
                 buffer_pop(event_buffer, &rtemp, (void**)&etemp);
 		time_last_shipped = clock();
@@ -84,10 +86,10 @@ void* shipper(void* ptr)
             int first_gtid;
             if(r == RUN_HEADER)
                 first_gtid = ((RHDR*) header)->first_event_id;
-            if(r == AV_STATUS_HEADER)
-                first_gtid = 0; //((CAAC*) header)->first_event_id;
-            if(r == MANIPULATOR_STATUS_HEADER)
-                first_gtid = 0; //((CAST*) header)->first_event_id;
+            //if(r == AV_STATUS_HEADER)
+            //    first_gtid = 0; //((CAAC*) header)->first_event_id;
+            //if(r == MANIPULATOR_STATUS_HEADER)
+            //    first_gtid = 0; //((CAST*) header)->first_event_id;
 
             if(first_gtid <= etemp->gtid) {
                 buffer_pop(run_header_buffer, &r, &header);
@@ -99,6 +101,7 @@ void* shipper(void* ptr)
                     RHDR* rhdr = (RHDR*) header;
                     fwrite(rhdr, sizeof(RHDR), 1, outfile);
                 }
+
                 else if(r == AV_STATUS_HEADER) {
                     CDABHeader cdh;
                     cdh.record_type = (int) r;
@@ -115,6 +118,7 @@ void* shipper(void* ptr)
                     CAST* cast = (CAST*) header;
                     fwrite(cast, sizeof(CAST), 1, outfile);
                 }
+
                 else {
                     printf("Encountered header of unknown type %i in run header buffer\n", r);
                     // do something
@@ -124,6 +128,7 @@ void* shipper(void* ptr)
             else
                 break;
         }
+
 
         // ship event-level headers
         while(event_header_buffer->keys[event_header_buffer->read]) {
@@ -163,6 +168,7 @@ void* shipper(void* ptr)
                 break;
         }
 
+
         // finally, ship the event data
         Event* e;
         RecordType r;
@@ -183,5 +189,7 @@ void* shipper(void* ptr)
         }
         time_last_shipped = clock();
     }
+*/
+}
 }
 
