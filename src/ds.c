@@ -8,12 +8,76 @@
 
 extern Event* events;
 
-
-uint32_t get_bits(uint32_t x, uint32_t position, uint32_t count)
-{
+uint32_t get_bits(uint32_t x, uint32_t position, uint32_t count) {
   uint32_t shifted = x >> position;
   uint32_t mask = ((uint64_t)1 << count) - 1;
   return shifted & mask;
+}
+
+Event* event_at(uint64_t key) {
+  Event* s;
+  HASH_FIND(hh, events, &key, sizeof(uint64_t), s);
+  
+  //printf("event_at %i, s=%llx, size=%u\n", (int) key, s, HASH_COUNT(events));
+  return s;
+}
+
+Event* event_push(uint64_t key) {
+  Event* e = (Event*) malloc(sizeof(Event));
+  e->id = key;
+  e->datatype = DETECTOR_EVENT;
+  e->timetag = 0;
+  e->mcflag = 0;
+  e->caen_status = 0;
+  e->ptb_status = 0;
+  //e->run_id = ?
+  //e->subrun_id = ?
+  //e->nhits = ?
+  pthread_mutex_init(&e->lock, NULL);
+
+  clock_t t = clock();
+  e->builder_arrival_time = t;
+
+  HASH_ADD(hh, events, id, sizeof(uint64_t), e);
+  //printf("event_push %i, size=%u\n", (int) key, HASH_COUNT(events));
+  //printf("PUSH!\n");
+  //event_list();
+  return e;
+}
+
+Event* event_pop(uint64_t key) {
+  //printf("POP!\n");
+  //event_list();
+  Event* s = event_at(key);
+  //printf("event_pop: key=%i, s=%llx\n", key, s);
+  if (s) HASH_DEL(events, s);
+  //printf("event_pop %i, size=%u\n", (int) key, HASH_COUNT(events));
+  return s;
+}
+
+bool event_ready(Event* s) {
+  if (!s) return false;
+  return (s->ptb_status && (s->caen_status & DIGITIZERS) == DIGITIZERS);
+}
+
+//bool event_ready(uint32_t key) {
+//  Event* s = event_at(key);
+//  return event_ready(s);
+//}
+
+int event_write(uint64_t key, char* dest) {
+  return -1;
+}
+
+void event_list() {
+  Event *s;
+  for (s=events; s!=NULL; s=s->hh.next) {
+    printf("key: %li, time: %li\n", s->id, s->timetag);
+  }
+}
+
+unsigned int event_count() {
+  return HASH_COUNT(events);
 }
 
 /*
@@ -44,8 +108,8 @@ uint32_t pmtbundle_pmtid(PMTBundle* p)
 }
 */
 
-Buffer* buffer_alloc(Buffer** pb, int size)
-{
+/*
+Buffer* buffer_alloc(Buffer** pb, int size) {
     *pb = (Buffer*) malloc(sizeof(Buffer));
     (*pb)->keys = (void**) malloc(size * sizeof(void*));
     (*pb)->type = (RecordType*) malloc(size * sizeof(RecordType));
@@ -180,23 +244,5 @@ int buffer_insert(Buffer* b, unsigned int id, RecordType type, void* pk)
     else
         return 1;
 }
-
-Event* event_at(uint32_t key) {
-  Event* s;
-  HASH_FIND_INT(events, &key, s);
-  //printf("event_at %i, size=%u\n", (int) key, HASH_COUNT(events));
-  return s;
-}
-
-void event_push(uint32_t key, Event* s) {
-  HASH_ADD_INT(events, timetag, s);
-  //printf("event_push %i, size=%u\n", (int) key, HASH_COUNT(events));
-}
-
-Event* event_pop(uint32_t key) {
-  Event* s = event_at(key);
-  HASH_DEL(events, s);
-  //printf("event_pop %i, size=%u\n", (int) key, HASH_COUNT(events));
-  return s;
-}
+*/
 

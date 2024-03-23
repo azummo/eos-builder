@@ -7,28 +7,21 @@
 #include <jemalloc/jemalloc.h>
 #include <evb/listener.h>
 #include <evb/shipper.h>
+#include <evb/monitor.h>
 #include <evb/ds.h>
 
-/** Event Builder for SNO+, C edition
+/** Event Builder for Eos, C edition
  *
  *  Enqueues incoming raw data in ring buffers, and writes out to disk and/or
  *  a socket as events are finished.
  *
+ *  Andy Mastbaum (mastbaum@physics.rutgers.edu), March 2024
  *  Andy Mastbaum (mastbaum@hep.upenn.edu), June 2011
  */ 
 
-#define EVENT_BUFFER_SIZE 10000
-#define EVENT_HEADER_BUFFER_SIZE 50
-#define RUN_HEADER_BUFFER_SIZE 20
-
-//Buffer* event_buffer;
-//Buffer* event_header_buffer;
-//Buffer* run_header_buffer;
-
 Event* events = NULL;
 
-int main(int argc, char *argv[])
-{
+int main(int argc, char* argv[]) {
     int port;
     if(argc != 2) {
         printf("Usage: %s <port>\n", argv[0]);
@@ -37,26 +30,24 @@ int main(int argc, char *argv[])
     else
         port = atoi(argv[1]);
 
-    // initialization
-    //buffer_alloc(&event_buffer, EVENT_BUFFER_SIZE);
-    //buffer_alloc(&event_header_buffer, EVENT_HEADER_BUFFER_SIZE);
-    //buffer_alloc(&run_header_buffer, RUN_HEADER_BUFFER_SIZE);
-
     // fake RHDR for testing
     RHDR* rh = (RHDR*) malloc(sizeof(RHDR));
     rh->run_id = 123456;
     rh->first_event_id = 0;
     //buffer_push(run_header_buffer, RUN_HEADER, rh);
 
-    // launch listener (input) and shipper (output) threads
+    // launch listener (input), shipper (output), monitor threads
     pthread_t tlistener;
     pthread_create(&tlistener, NULL, listener, (void*)&port);
     pthread_t tshipper;
     pthread_create(&tshipper, NULL, shipper, NULL);
+    pthread_t tmonitor;
+    pthread_create(&tmonitor, NULL, monitor, NULL);
 
     // wait for threads to join before exiting
     pthread_join(tlistener, NULL);
     pthread_join(tshipper, NULL);
+    pthread_join(tmonitor, NULL);
 
     return 0;
 }

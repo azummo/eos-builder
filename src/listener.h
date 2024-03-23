@@ -1,14 +1,7 @@
 #ifndef __PENNBUILDER_LISTENER__
 #define __PENNBUILDER_LISTENER__
 
-#define HEADER_LENGTH 6
-#define MEGASIZE 119
-#define XL3_MAXPAYLOADSIZE_BYTES (MEGASIZE*12) 
 #define MAX_BUFFER_LEN 350000
-// (XL3_MAXPAYLOADSIZE_BYTES+HEADER_LENGTH)
-#define NCRATES 19
-#define NFECS 16
-#define NCHANS 32 
 
 typedef struct {
   uint16_t packet_type;
@@ -20,8 +13,6 @@ void handler(int signal);
 void die(const char *msg);
 void* listener_child(void* psock);
 void* listener(void* ptr);
-
-//void accept_xl3packet(void* packet_buffer);
 
 typedef enum {
   CTL_PACKET,
@@ -40,10 +31,11 @@ typedef enum {
   CAAC_PACKET
 } PacketType;
 
-typedef struct
-{
-    uint16_t type;
+typedef struct {
+  uint16_t type;
 } PacketHeader;
+
+#endif
 
 /*
 typedef struct
@@ -60,5 +52,4 @@ typedef struct
   char payload[XL3_MAXPAYLOADSIZE_BYTES];
 } XL3Packet;
 */
-#endif
 

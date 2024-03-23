@@ -11,35 +11,40 @@
 #include <time.h>
 #include <jemalloc/jemalloc.h>
 #include <evb/listener.h>
+#include <evb/shipper.h>
 #include <evb/ds.h>
 #include <evb/ptb.h>
 #include <evb/uthash.h>
 
 #define NUM_THREADS 5
 
-//extern Buffer* event_buffer;
-//extern Buffer* event_header_buffer;
-//extern Buffer* run_header_buffer;
 extern FILE* outfile;
+extern Event* events;
 
 int sockfd, thread_sockfd[NUM_THREADS];
 
-void die(const char *msg)
-{
+typedef struct {
+  uint64_t ptb_last;
+  uint64_t ptb_dt;
+  uint64_t ptb;
+  uint64_t caen[NDIGITIZERS];
+} time_offsets;
+
+time_offsets offsets;
+
+void die(const char *msg) {
   perror(msg);
   exit(1);
 }
 
-void close_sockets()
-{
+void close_sockets() {
   int i;
   for(i=0; i<NUM_THREADS; i++)
     close(thread_sockfd[i]);
   close(sockfd);
 }
 
-void handler(int signal)
-{
+void handler(int signal) {
   if(signal == SIGINT) {
     printf("\nCaught CTRL-C (SIGINT), Exiting...\n");
     //if(!buffer_isempty(event_buffer)) {
@@ -97,23 +102,65 @@ void accept_ptb(char* data) {
     ptb_word_t* temp_word = (ptb_word_t*) (data+header_size+i*word_size);
 
     if (temp_word->word_type == ptb_t_ts) {
-      //printf("TS\n");
+      //ptb_timestamp_t* t = (ptb_timestamp_t*) temp_word;
+      //printf("TS / timestamp: %li\n", t->timestamp);
     }
     else if (temp_word->word_type == ptb_t_lt) {
-      ptb_trigger_t* t = (ptb_trigger_t*) temp_word;
-      //printf("LLT / type: %04x, timestamp: %04lx, word: %04lx\n",
+      //ptb_trigger_t* t = (ptb_trigger_t*) temp_word;
+      //printf("LLT / type: %i, timestamp: %li, word: %li\n",
       //       t->word_type, t->timestamp, (uint64_t) t->trigger_word);
     }
     else if (temp_word->word_type == ptb_t_gt) {
       ptb_trigger_t* t = (ptb_trigger_t*) temp_word;
 
-      printf("HLT / type: %04x, timestamp: %04lx, word: %04lx\n",
-             t->word_type, t->timestamp, (uint64_t) t->trigger_word);
+      //printf("HLT / type: %i, timestamp: %li, word: %li\n",
+      //       t->word_type, t->timestamp, (uint64_t) t->trigger_word);
+
+      if (offsets.ptb == 0) {
+        offsets.ptb = t->timestamp;
+      }
+
+      if (t->timestamp < offsets.ptb_last) {
+        offsets.ptb_dt += 1 << 27;  // ???
+      }
+      offsets.ptb_last = t->timestamp;
+
+      uint64_t ts = t->timestamp + offsets.ptb_dt - offsets.ptb;
+
+      ts *= 2.5000205;  // 125 MHz vs. 62.5 MHz
+
+      uint64_t key = ts / 100000;
+
+      //printf("PTB : key=%lu\n", key);
+
+      //for (int k=0; k<4; k++) {
+      //  for (int j=0; j<32; j++) {
+      //    int x = ((*(((uint32_t*)t)+k))>>(31-j)) & 1;
+      //    printf("%i", x);
+      //  }
+      //  printf("\n");
+      //}        
+
+      Event* e = event_at(key);
+
+      if (!e) {
+        e = event_push(key);
+        e->timetag = t->timestamp;
+        memcpy((void*)(&e->ptb), (void*) t, sizeof(ptb_trigger_t));
+        e->ptb_status = true;
+      }
+      else {
+        pthread_mutex_lock(&e->lock);
+        memcpy((void*)(&e->ptb), (void*) t, sizeof(ptb_trigger_t));
+        e->ptb_status = true;
+        pthread_mutex_unlock(&e->lock);
+      }
+
+      if (event_ready(e)) queue_push(key);
     }
     else if (temp_word->word_type == ptb_t_fback) {
       //printf("FEEDBACK\n");
-      //ptb::content::word::feedback_t* feedback = \
-      //  (ptb::content::word::feedback_t*) (&temp_word);
+      //ptb_feedback_t* feedback = (ptb_feedback_t*) (&temp_word);
     }
     else if (temp_word->word_type == ptb_t_ch) {
       //printf("CH STATUS\n");
@@ -122,52 +169,49 @@ void accept_ptb(char* data) {
       //printf("Word: OTHER, type = %i\n", temp_word->word_type);
     }
   }
-  
 }
 
-void accept_daq(char* packet_buffer)
-{
+void accept_daq(char* packet_buffer) {
   DigitizerData* p = (DigitizerData*) (packet_buffer+4);
-
   uint8_t digid = 0; //p->digitizer_id;
 
   for (uint16_t i=0; i<p->nEvents; i++) {
-    uint32_t timetag = p->timetags[i];
+    uint64_t timetag = p->timetags[i];
+    uint64_t exttimetag = p->exttimetags[i];
+    uint64_t t = (exttimetag << 32) | timetag;
 
-    int key = (int) p->timetags[i] / 100;
+    //printf("DAQ / time: %04lx\n", t);
+
+    if (offsets.caen[digid] == 0) {
+      offsets.caen[digid] = t;
+    }
+
+    uint64_t key = t - offsets.caen[digid];
+
+    key /= 100000;
+
+    //printf("DAQ : key=%lu\n", key);
+
     Event* e = event_at(key);
 
     if (!e) {
-      printf("DAQ / time: %04x\n", timetag);
-      //printf("DAQ: create new event, key=%i\n", key);
-      e = (Event*) malloc(sizeof(Event));
-      e->id = key;
-      e->timetag = p->timetags[i];
-      e->datatype = 0;
-      e->mcflag = 0;
-      e->caen_status = 0;  // who has data?
-      //e->run_id = ?
-      //e->subrun_id = ?
-      //e->nhits = ?
-
-      clock_t t = clock();
-      e->builder_arrival_time = t;
-
+      e = event_push(key);
+      e->timetag = t;
       memcpy((void*)(&e->caen[digid]), (void*) p, sizeof(DigitizerData));
       e->caen_status |= (1 << digid);
-
-      event_push(key, e);
     }
     else {
+      pthread_mutex_lock(&e->lock);
       memcpy((void*)(&e->caen[digid]), (void*) p, sizeof(DigitizerData));
       e->caen_status |= (1 << digid);
-      //printf("DAQ: append to existing event, key=%i\n", key);
+      pthread_mutex_unlock(&e->lock);
     }
+
+    if (event_ready(e)) queue_push(key);
   }
 }
 
-void* listener_child(void* psock)
-{
+void* listener_child(void* psock) {
   int sock = *((int*) psock);
   char* packet_buffer = malloc(MAX_BUFFER_LEN);
   bzero(packet_buffer, MAX_BUFFER_LEN);
@@ -186,7 +230,7 @@ void* listener_child(void* psock)
 
     NetMeta* meta = (NetMeta*) packet_buffer;
     PacketType packet_type = meta->packet_type;
-    uint16_t packet_size = meta->len;
+    //uint16_t packet_size = meta->len;
 
     // Handle packet types
     if (((ptb_tcp_header_t*) packet_buffer)->format_version == 45) {
@@ -197,7 +241,7 @@ void* listener_child(void* psock)
       const size_t header_size = sizeof(ptb_tcp_header_t);
       const size_t word_size = 4 * sizeof(uint32_t);
       int n_words = head->packet_size / word_size;
-      //printf("PTB word_size=%i, packet_size=%i, n_words=%i\n", word_size, head->packet_size, n_words);
+
       for (int i=0; i<n_words; i++) {
         recv_all(sock, packet_buffer+header_size+i*word_size, word_size);
       }
@@ -206,13 +250,8 @@ void* listener_child(void* psock)
     }
 
     else if(packet_type == DAQ_PACKET) {
-      //printf("recv DAQ_PACKET\n");
-      //memset(packet_buffer+4, 0, sizeof(DigitizerData));
-
       //printf("DAQ: type=%i\n", (int)packet_type);
-
       recv_all(sock, packet_buffer+4, sizeof(DigitizerData));
-
       accept_daq(packet_buffer);
     }
 
@@ -237,13 +276,12 @@ void* listener_child(void* psock)
 }
 
 
-void* listener(void* ptr)
-{
-  int portno;
+void* listener(void* ptr) {
+  int portno = *((int*) ptr);
   socklen_t clilen;
   struct sockaddr_in serv_addr, cli_addr;
 
-  portno = *((int*)ptr);
+  memset(&offsets, 0, sizeof(time_offsets));
 
   sockfd = socket(AF_INET, SOCK_STREAM, 0);
   if(sockfd < 0) die("ERROR opening socket");

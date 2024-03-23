@@ -3,7 +3,7 @@ EVB_SRCS = $(subst src/,,$(wildcard src/*.c))
 EVB_OBJS = $(EVB_SRCS:%.c=$(OBJ_DIR)/%.o)
 
 INCDIR = ./include
-CFLAGS = -I$(INCDIR)
+CFLAGS = -Wall -pedantic -I$(INCDIR)
 LFLAGS = -L/usr/local/lib
 
 CC = gcc $(FLAGS)

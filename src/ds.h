@@ -1,19 +1,28 @@
-#ifndef __PENNBUILDER_DS__
-#define __PENNBUILDER_DS__
+#ifndef __EOSBUILDER_DS__
+#define __EOSBUILDER_DS__
 
 #include <pthread.h>
 #include <stdint.h>
 #include <time.h>
+#include <evb/ptb.h>
 #include <evb/uthash.h>
 
 /** Data structure structs */
 
+#define DIGITIZERS 0x1
 #define NDIGITIZERS 1
-#define NPMTS 19 * 16 * 32
-#define MAX_ROPES 10
-
 
 uint32_t get_bits(uint32_t x, uint32_t position, uint32_t count);
+
+typedef enum {
+    EMPTY,
+    DETECTOR_EVENT,
+    RUN_HEADER,
+    //AV_STATUS_HEADER,
+    //MANIPULATOR_STATUS_HEADER,
+    //TRIG_BANK_HEADER,
+    //EPED_BANK_HEADER
+} RecordType;
 
 /**
  * @struct ChannelData
@@ -45,88 +54,46 @@ typedef struct DigitizerData {
   ChannelData channels[16];
 } DigitizerData;
 
-/*
-/// PMTBundle contains raw PMT data packed into 3 32-bit words (96 bits)
-typedef struct
-{
-    uint32_t word[3];
-} PMTBundle;
-
-// print some pmt bundle info (address, gtid, pmtid) for debugging
-void pmtbundle_print(PMTBundle* p);
-
-// extract ids from packed pmt bundle
-uint32_t pmtbundle_pmtid(PMTBundle* p);
-uint32_t pmtbundle_gtid(PMTBundle* p);
-
-/// MTCData contains trigger information. Format unknown AToW. (192 bits)
-typedef struct
-{
-    uint32_t word[6];
-} MTCData;
-
-/// CAENData contains digitized trigger sums for up to 8 channels (12.8k bits)
-typedef struct
-{
-    uint32_t header[4];
-    uint32_t data[8][55]; // v1720 packs data like so (2.5 samples/word)
-} CAENData;
+/**
+ * @struct Event
+ * 
+ * Contains all data for a single Eos detector event.
 */
+typedef struct {
+  uint64_t id;  // Key = timetag / 10?
+  uint64_t timetag;
+  uint32_t gtid;
 
+  uint32_t caen_status;
+  bool ptb_status;
 
-/// Event: contains all data for a single Eos detector event
-typedef struct
-{
-    int id;  // Key = timetag / 10
-    int timetag;
-    uint32_t gtid;
+  DigitizerData caen[NDIGITIZERS];
+  ptb_trigger_t ptb;
 
-    uint32_t caen_status;
+  clock_t builder_arrival_time;
+  uint32_t run_id;
+  uint32_t subrun_id;
+  uint32_t nhits;
+  uint8_t mcflag;
+  uint8_t datatype;
 
-    DigitizerData caen[NDIGITIZERS];
-    //PTBData ptb;
-    clock_t builder_arrival_time;
-    uint32_t run_id;
-    uint32_t subrun_id;
-    uint32_t nhits;
-    uint8_t mcflag;
-    uint8_t datatype;
+  pthread_mutex_t lock;
 
-    UT_hash_handle hh;
+  UT_hash_handle hh;
 } Event;
 
-/*
-/// EPED: event-level header with pedestal data
-typedef struct
-{
-    uint16_t type;
-    uint32_t gtdelay_coarse;
-    uint32_t gtdelay_fine;
-    uint32_t qped_amp;
-    uint32_t qped_width;
-    uint32_t pattern_id;
-    uint32_t caltype;
-    uint32_t event_id;  // GTID of first events in this bank's validity
-    uint32_t run_id;    // Double-check on the run
-} EPED;
+Event* event_at(uint64_t key);
+Event* event_push(uint64_t key);
+Event* event_pop(uint64_t key);
 
-/// TRIG: event-level header with MTC trigger metadata
-typedef struct
-{
-    uint16_t type;
-    // Arrays correspond to:
-    // N100Lo, N100Med, N100Hi, N20, N20LB, ESUMLo, ESUMHi, OWLn, OWLELo, OWLEHi
-    uint32_t trigmask;
-    uint16_t threshold[10];
-    uint16_t trig_zero_offset[10];
-    uint32_t pulser_rate;
-    uint32_t mtc_csr;
-    uint32_t lockout_width;
-    uint32_t prescale_freq;
-    uint32_t event_id;  // GTID of first events in this bank's validity
-    uint32_t wun_id;    // Double-check on the run
-} TRIG;
-*/
+bool event_ready(Event* s);
+//bool event_ready(int key);
+int event_write(uint64_t key, char* dest);
+
+void event_list();
+unsigned int event_count();
+
+
 /// RHDR: run header
 typedef struct
 {
@@ -142,55 +109,11 @@ typedef struct
     uint32_t valid_event_id;
     uint32_t run_id;
 } RHDR;
+
+#endif
+
+
 /*
-/// CAST: run-level header with calibration source orientation
-typedef struct
-{
-    uint16_t type;
-    uint16_t source_id;
-    uint16_t source_stat;
-    uint16_t nropes;
-    float manip_pos[3];
-    float manip_dest[3];
-    float srcpos_uncert1;
-    float srcpos_uncert2[3];
-    float lball_orient;
-    int rope_id[MAX_ROPES];
-    float rope_len[MAX_ROPES];
-    float rope_targ_len[MAX_ROPES];
-    float rope_vel[MAX_ROPES];
-    float rope_tens[MAX_ROPES];
-    float rope_err[MAX_ROPES];
-} CAST;
-
-/// CAAC: run-level header with AV orientation
-typedef struct
-{
-    uint16_t type;
-    float av_pos[3];
-    float av_roll[3];  // roll, pitch and yaw
-    float av_rope_length[7];
-} CAAC;
-*/
-
-/** Ring FIFO buffer
- *
- *  Data (keys) stored as void*, type given in field type, as defined in enum
- *  RecordType.
- *
- *  Based on example found at http://en.wikipedia.org/wiki/Circular_buffer.
- */
-
-typedef enum {
-    EMPTY,
-    DETECTOR_EVENT,
-    RUN_HEADER,
-    AV_STATUS_HEADER,
-    MANIPULATOR_STATUS_HEADER,
-    TRIG_BANK_HEADER,
-    EPED_BANK_HEADER
-} RecordType;
-
 typedef struct
 {
     uint64_t write;
@@ -230,10 +153,5 @@ int buffer_isempty(Buffer* b);
 
 int buffer_push(Buffer* b, RecordType type, void* key);
 int buffer_pop(Buffer* b, RecordType* type, void** pk);
-
-Event* event_at(uint32_t key);
-void event_push(uint32_t key, Event* s);
-Event* event_pop(uint32_t key);
-
-#endif
+*/
 
