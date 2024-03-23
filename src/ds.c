@@ -8,11 +8,13 @@
 
 extern Event* events;
 
+/*
 uint32_t get_bits(uint32_t x, uint32_t position, uint32_t count) {
   uint32_t shifted = x >> position;
   uint32_t mask = ((uint64_t)1 << count) - 1;
   return shifted & mask;
 }
+*/
 
 Event* event_at(uint64_t key) {
   Event* s;
@@ -22,37 +24,29 @@ Event* event_at(uint64_t key) {
   return s;
 }
 
-Event* event_push(uint64_t key) {
-  Event* e = (Event*) malloc(sizeof(Event));
+Event* event_create(uint64_t key) {
+  Event* e = malloc(sizeof(Event));
   e->id = key;
-  e->datatype = DETECTOR_EVENT;
-  e->timetag = 0;
-  e->mcflag = 0;
+  e->type = DETECTOR_EVENT;
   e->caen_status = 0;
   e->ptb_status = 0;
-  //e->run_id = ?
-  //e->subrun_id = ?
-  //e->nhits = ?
-  pthread_mutex_init(&e->lock, NULL);
+  pthread_mutex_init(&e->lock);
+  clock_gettime(CLOCK_MONOTONIC, &e->creation_time);
+  event_push(key, e);
+  return e;
+}
 
-  clock_t t = clock();
-  e->builder_arrival_time = t;
-
+void event_push(uint64_t key, Event* e) {
   HASH_ADD(hh, events, id, sizeof(uint64_t), e);
   //printf("event_push %i, size=%u\n", (int) key, HASH_COUNT(events));
-  //printf("PUSH!\n");
-  //event_list();
   return e;
 }
 
 Event* event_pop(uint64_t key) {
-  //printf("POP!\n");
-  //event_list();
-  Event* s = event_at(key);
-  //printf("event_pop: key=%i, s=%llx\n", key, s);
-  if (s) HASH_DEL(events, s);
+  Event* e = event_at(key);
+  if (!e) HASH_DEL(events, e);
   //printf("event_pop %i, size=%u\n", (int) key, HASH_COUNT(events));
-  return s;
+  return e;
 }
 
 bool event_ready(Event* s) {

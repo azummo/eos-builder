@@ -19,6 +19,7 @@
  *  Andy Mastbaum (mastbaum@hep.upenn.edu), June 2011
  */ 
 
+Header* headers = NULL;
 Event* events = NULL;
 
 int main(int argc, char* argv[]) {
@@ -34,6 +35,7 @@ int main(int argc, char* argv[]) {
     RHDR* rh = (RHDR*) malloc(sizeof(RHDR));
     rh->run_id = 123456;
     rh->first_event_id = 0;
+    header_push(0, RUN_HEADER, (void*) rh);
     //buffer_push(run_header_buffer, RUN_HEADER, rh);
 
     // launch listener (input), shipper (output), monitor threads
