@@ -14,14 +14,20 @@
 #include <jemalloc/jemalloc.h>
 #include <evb/monitor.h>
 #include <evb/ds.h>
+#include <evb/shipper.h>
 
 extern Event* events;
+extern pthread_mutex_t record_lock;
 
 extern uint32_t bytes_written;
 extern uint32_t events_written;
 extern char filename[100];
 
 void handler(int signal);
+
+float timediff(struct timespec t1, struct timespec t2) {
+  return t2.tv_sec - t1.tv_sec + 1e-9 * (t2.tv_nsec - t1.tv_nsec) / CLOCKS_PER_SEC;
+}
 
 FILE* outfile;
 
@@ -34,27 +40,29 @@ void* monitor(void* ptr) {
 
   while(1) {
     clock_gettime(CLOCK_MONOTONIC, &tw_n);
+    float dt = timediff(tw_l, tw_n);
 
-    float dt = tw_n.tv_sec - tw_l.tv_sec + 1e-9 * (tw_n.tv_nsec - tw_l.tv_nsec);
-
-printf("dt=%f\n", dt);
     unsigned int queued = event_count();
     float wrate = dt != 0 ? bytes_written / dt : 0;
     float erate = dt != 0 ? events_written / dt : 0;
     int evt = events_written;
     bytes_written = 0;
     events_written = 0;
-
     clock_gettime(CLOCK_MONOTONIC, &tw_l);
 
+    // Event check
     int nstale = 0;
-    for (Event* s=events; s!=NULL; s=s->hh.next) {
-      if ((s->builder_arrival_time - 0) / CLOCKS_PER_SEC > 5) {
+    for (Event* e=events; e!=NULL; e=e->hh.next) {
+      if (timediff(e->creation_time, tw_n) > 5) {
         nstale++;
-        printf("# stale key %li (ptb %i, caen %i)\n", s->id, s->ptb_status, s->caen_status);
+        printf("# stale key %li (ptb %i, caen %i)\n", e->id, e->ptb_status, e->caen_status);
+        pthread_mutex_lock(&record_lock);
+        record_push(e->id, DETECTOR_EVENT, (void*)e);
+        pthread_mutex_unlock(&record_lock);
       }
     }
 
+    // Status message
     printf("%% q %i", queued);
     if (nstale > 0) {
       printf(" [%i!]", nstale);

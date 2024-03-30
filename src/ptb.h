@@ -1,5 +1,15 @@
-#ifndef __EVB_PTB__
-#define __EVB_PTB__
+#ifndef __EOSBUILDER_PTB__
+#define __EOSBUILDER_PTB__
+
+/**
+ * PTB tools
+ *
+ * Interfacing for Penn Trigger Board clients.
+ */
+
+#include <stdint.h>
+
+// Minimal SBND-style ptb_content structs
 
 enum ptb_word_type {
   ptb_t_fback=0x0, ptb_t_lt=0x1, ptb_t_gt=0x2, ptb_t_ch=0x3, ptb_t_chksum=0x4, ptb_t_ts=0x7
@@ -48,6 +58,24 @@ typedef struct {
   uint64_t trigger_word : 61;
   uint64_t word_type : 3;
 } ptb_trigger_t;
+
+/**
+ * Convert a PTB timestamp to a hash table key.
+ *
+ * @param timestamp The PTB timestamp
+ * @param ts If non-null, returns normalized high-precision timestamp
+ * @return The normalized key
+ */
+uint64_t ptb_key(uint64_t timestamp, uint64_t* ts);
+
+/**
+ * Parse a PTB packet.
+ * 
+ * Fills PTB data into the event hash table.
+ *
+ * @param data The data buffer
+ */
+void accept_ptb(char* data);
 
 #endif
 

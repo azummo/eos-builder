@@ -1,0 +1,60 @@
+#ifndef __EOSBUILDER_DAQ__
+#define __EOSBUILDER_DAQ__
+
+/**
+ * DAQ tools
+ *
+ * Interfacing for WbLSdaq clients.
+ */
+
+#include <stdint.h>
+
+/**
+ * @struct ChannelData
+ * @
+ */
+typedef struct ChannelData {
+  uint32_t chID;
+  uint32_t offset;
+  uint32_t threshold;
+  float dynamic_range;
+  uint16_t samples[20][500];
+  uint16_t patterns[20];
+} ChannelData;
+
+/**
+ * @struct DigitizerData
+ * @
+ */
+typedef struct DigitizerData {
+  uint16_t type;
+  uint16_t bits;
+  uint16_t samples;
+  uint16_t nEvents;
+  float ns_sample;
+  uint32_t counters[20];
+  uint32_t timetags[20];
+  uint16_t exttimetags[20];
+  ChannelData channels[16];
+} DigitizerData;
+
+/**
+ * Convert a WbLSdaq timestamp to a hash table key.
+ *
+ * @param timestamp The DAQ timestamp
+ * @param ts If non-null, returns normalized high-precision timestamp
+ * @return The normalized key
+ */
+uint64_t daq_key(uint64_t timestamp, uint64_t* ts);
+
+/**
+ * Parse a DAQ packet.
+ * 
+ * Fills DAQ data into the event hash table.
+ *
+ * @param data The data buffer
+ */
+void accept_daq(char* data);
+
+#endif
+

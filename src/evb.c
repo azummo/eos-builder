@@ -10,17 +10,19 @@
 #include <evb/monitor.h>
 #include <evb/ds.h>
 
-/** Event Builder for Eos, C edition
+/**
+ * Event Builder for Eos, C edition
  *
- *  Enqueues incoming raw data in ring buffers, and writes out to disk and/or
- *  a socket as events are finished.
+ * Enqueues incoming raw data in hash table buffers, and
+ * writes out to disk and/or a socket as events are finished.
  *
- *  Andy Mastbaum (mastbaum@physics.rutgers.edu), March 2024
- *  Andy Mastbaum (mastbaum@hep.upenn.edu), June 2011
+ * Andy Mastbaum (mastbaum@physics.rutgers.edu), March 2024
+ * Andy Mastbaum (mastbaum@hep.upenn.edu), June 2011
  */ 
 
-Header* headers = NULL;
 Event* events = NULL;
+Record* records = NULL;
+pthread_mutex_t record_lock;
 
 int main(int argc, char* argv[]) {
     int port;
@@ -31,12 +33,12 @@ int main(int argc, char* argv[]) {
     else
         port = atoi(argv[1]);
 
+    pthread_mutex_init(&record_lock, NULL);
+
     // fake RHDR for testing
-    RHDR* rh = (RHDR*) malloc(sizeof(RHDR));
-    rh->run_id = 123456;
-    rh->first_event_id = 0;
-    header_push(0, RUN_HEADER, (void*) rh);
-    //buffer_push(run_header_buffer, RUN_HEADER, rh);
+    RHDR* rhdr = (RHDR*) malloc(sizeof(RHDR));
+    rhdr->type = RUN_HEADER;
+    record_push(0, RUN_HEADER, rhdr);
 
     // launch listener (input), shipper (output), monitor threads
     pthread_t tlistener;

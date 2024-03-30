@@ -7,22 +7,10 @@
 #include <evb/ds.h>
 
 extern Event* events;
+extern Record* records;
+extern pthread_mutex_t record_lock;
 
-/*
-uint32_t get_bits(uint32_t x, uint32_t position, uint32_t count) {
-  uint32_t shifted = x >> position;
-  uint32_t mask = ((uint64_t)1 << count) - 1;
-  return shifted & mask;
-}
-*/
-
-Event* event_at(uint64_t key) {
-  Event* s;
-  HASH_FIND(hh, events, &key, sizeof(uint64_t), s);
-  
-  //printf("event_at %i, s=%llx, size=%u\n", (int) key, s, HASH_COUNT(events));
-  return s;
-}
+/** Events */
 
 Event* event_create(uint64_t key) {
   Event* e = malloc(sizeof(Event));
@@ -30,43 +18,35 @@ Event* event_create(uint64_t key) {
   e->type = DETECTOR_EVENT;
   e->caen_status = 0;
   e->ptb_status = 0;
-  pthread_mutex_init(&e->lock);
+  pthread_mutex_init(&e->lock, NULL);
   clock_gettime(CLOCK_MONOTONIC, &e->creation_time);
   event_push(key, e);
+  return e;
+}
+
+Event* event_at(uint64_t key) {
+  Event* e;
+  HASH_FIND(hh, events, &key, sizeof(uint64_t), e);
+  //printf("event_at %i, s=%llx, size=%u\n", (int) key, s, HASH_COUNT(events));
   return e;
 }
 
 void event_push(uint64_t key, Event* e) {
   HASH_ADD(hh, events, id, sizeof(uint64_t), e);
   //printf("event_push %i, size=%u\n", (int) key, HASH_COUNT(events));
-  return e;
+  //return e;
 }
 
 Event* event_pop(uint64_t key) {
   Event* e = event_at(key);
-  if (!e) HASH_DEL(events, e);
+  if (e) HASH_DEL(events, e);
   //printf("event_pop %i, size=%u\n", (int) key, HASH_COUNT(events));
   return e;
 }
 
-bool event_ready(Event* s) {
-  if (!s) return false;
-  return (s->ptb_status && (s->caen_status & DIGITIZERS) == DIGITIZERS);
-}
-
-//bool event_ready(uint32_t key) {
-//  Event* s = event_at(key);
-//  return event_ready(s);
-//}
-
-int event_write(uint64_t key, char* dest) {
-  return -1;
-}
-
 void event_list() {
-  Event *s;
-  for (s=events; s!=NULL; s=s->hh.next) {
-    printf("key: %li, time: %li\n", s->id, s->timetag);
+  for (Event* e=events; e!=NULL; e=e->hh.next) {
+    printf("Event: %li\n", e->id);
   }
 }
 
@@ -74,169 +54,41 @@ unsigned int event_count() {
   return HASH_COUNT(events);
 }
 
-/*
-void pmtbundle_print(PMTBundle* p)
-{
-    printf("PMTBundle at %p:\n", (void*) p);
-    printf("  pmtid =  %i:\n", pmtbundle_pmtid(p));
-    printf("  gtid  =  %i:\n", pmtbundle_gtid(p));
-    int i;
-    for(i=0; i<3; i++)
-        printf("  word%i =  %u:\n", i, p->word[i]);
+uint8_t event_ready(Event* s) {
+  if (!s) return false;
+  return (s->ptb_status && (s->caen_status & DIGITIZERS) == DIGITIZERS);
 }
 
-uint32_t pmtbundle_gtid(PMTBundle* p)
-{
-    uint32_t gtid1 = get_bits(p->word[0], 0, 16);
-    uint32_t gtid2 = get_bits(p->word[2], 12, 4);
-    uint32_t gtid3 = get_bits(p->word[2], 28, 4);
-    return (gtid1 + (gtid2<<16) + (gtid3<<20));
+/** Output records. */
+
+void record_push(uint64_t key, RecordType type, void* data) {
+  Record* r = (Record*) malloc(sizeof(Record));
+  r->id = key;
+  r->type = type;
+  r->data = data;
+  HASH_ADD(hh, records, id, sizeof(uint64_t), r);
 }
 
-uint32_t pmtbundle_pmtid(PMTBundle* p)
-{
-    int ichan = get_bits(p->word[0], 16, 5);
-    int icard = get_bits(p->word[0], 26, 4);
-    int icrate = get_bits(p->word[0], 21, 5);
-    return (512*icrate + 32*icard + ichan);
-}
-*/
-
-/*
-Buffer* buffer_alloc(Buffer** pb, int size) {
-    *pb = (Buffer*) malloc(sizeof(Buffer));
-    (*pb)->keys = (void**) malloc(size * sizeof(void*));
-    (*pb)->type = (RecordType*) malloc(size * sizeof(RecordType));
-    (*pb)->mutex_buffer = (pthread_mutex_t*) malloc(size* sizeof(pthread_mutex_t));
-    int mem_allocated = sizeof(Buffer) + size * (sizeof(void*) + sizeof(RecordType) + sizeof(pthread_mutex_t));
-    if(*pb) {
-        printf("Initializing buffer: keys[%d] (%d KB allocated)\n", size, mem_allocated/1000);
-        bzero(*pb, sizeof(Buffer));
-        (*pb)->size = size;
-        (*pb)->write = 0;
-        (*pb)->read  = 0;
-        (*pb)->offset = 0;
-
-        int i;
-        for(i=0; i<(*pb)->size; i++)
-            pthread_mutex_init(&((*pb)->mutex_buffer[i]), NULL);
-        pthread_mutex_init(&((*pb)->mutex_write), NULL);
-        pthread_mutex_init(&((*pb)->mutex_read), NULL);
-        pthread_mutex_init(&((*pb)->mutex_offset), NULL);
-        pthread_mutex_init(&((*pb)->mutex_size), NULL);
-    }
-    return *pb;
-}
- 
-inline int buffer_isfull(Buffer* b)
-{
-    return (((b->write + 1) % b->size) == b->read);
-}
- 
-inline int buffer_isempty(Buffer* b)
-{
-    return (b->read == b->write);
-}
- 
-int buffer_push(Buffer* b, RecordType type, void* key)
-{
-    pthread_mutex_lock(&(b->mutex_write));
-    pthread_mutex_lock(&(b->mutex_buffer[b->write]));
-    uint64_t write_old = b->write;
-    int full = buffer_isfull(b);
-    if(!full)
-    {
-        b->keys[b->write] = key;
-        b->type[b->write] = type;
-        b->write++;
-        b->write %= b->size;
-    }
-    pthread_mutex_unlock(&(b->mutex_write));
-    pthread_mutex_unlock(&(b->mutex_buffer[write_old]));
-    return !full;
+Record* record_pop(uint64_t key) {
+  Record* r = NULL;
+  HASH_FIND(hh, records, &key, sizeof(uint64_t), r);
+  if (r) HASH_DEL(records, r);
+  return r;
 }
 
-int buffer_pop(Buffer* b, RecordType* type, void** pk)
-{
-    pthread_mutex_lock(&(b->mutex_read));
-    pthread_mutex_lock(&(b->mutex_buffer[b->read]));
-    uint64_t read_old = b->read;
-    int empty = buffer_isempty(b);
-    if(!empty)
-    {
-        (*pk) = b->keys[b->read];
-        (*type) = b->type[b->read];
-        b->keys[b->read] = NULL;
-        b->type[b->read] = (RecordType) 0;
-        b->read++; // note: you can pop a NULL pointer off the end
-        b->read %= b->size;
-    }
-    pthread_mutex_unlock(&(b->mutex_read));
-    pthread_mutex_unlock(&(b->mutex_buffer[read_old]));
-    return !empty;
+unsigned int record_count() {
+  return HASH_COUNT(records);
 }
 
-void buffer_status(Buffer* b)
-{
-    printf("Buffer at %p:\n", (void*) b);
-    printf("  write: %lu, read: %lu, full: %d, empty: %d\n", b->write,
-                                                             b->read,
-                                                             buffer_isfull(b),
-                                                             buffer_isempty(b));
+int64_t record_by_id(const Record* a, const Record* b) {
+  return (a->id - b->id);
 }
 
-uint64_t buffer_keyid(Buffer* b, unsigned int id)
-{
-    return (id - b->offset) % b->size;
+uint64_t record_next() {
+  if (record_count() == 0) return -1;
+  pthread_mutex_lock(&record_lock);
+  HASH_SORT(records, record_by_id);
+  pthread_mutex_unlock(&record_lock);
+  return records->id;
 }
-
-void buffer_clear(Buffer* b)
-{
-    pthread_mutex_lock(&(b->mutex_write));
-    pthread_mutex_lock(&(b->mutex_read));
-    int i;
-    for(i=0; i<b->size; i++)
-        pthread_mutex_lock(&(b->mutex_buffer[i]));
-
-    for(i=0; i<b->size; i++) {
-        if(b->keys[i] != NULL)
-            free(b->keys[i]);
-        b->keys[i] = NULL;
-        b->type[i] = (RecordType) 0;
-    }
-    b->write = 0;
-    b->read = 0;
-
-    pthread_mutex_unlock(&(b->mutex_write));
-    pthread_mutex_unlock(&(b->mutex_read));
-    for(i=0; i<b->size; i++)
-        pthread_mutex_unlock(&(b->mutex_buffer[i]));
-}
-
-int buffer_at(Buffer* b, unsigned int id, RecordType* type, void** pk)
-{
-    int keyid = buffer_keyid(b, id);
-    if (keyid < b->size) {
-        *type = b->type[keyid];
-        *pk = b->keys[keyid];
-        return pk == NULL ? 1 : 0;
-    }
-    else
-        return 1;
-}
-
-int buffer_insert(Buffer* b, unsigned int id, RecordType type, void* pk)
-{
-    int keyid = buffer_keyid(b, id);
-    if(!b->keys[keyid]) {
-        b->type[keyid] = type;
-        b->keys[keyid] = pk;
-        b->write = keyid;
-        b->write %= b->size;
-        return 0;
-    }
-    else
-        return 1;
-}
-*/
 

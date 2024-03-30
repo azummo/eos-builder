@@ -1,5 +1,14 @@
-#ifndef __PENNBUILDER_SHIPPER__
-#define __PENNBUILDER_SHIPPER__
+#ifndef __EOSBUILDER_SHIPPER__
+#define __EOSBUILDER_SHIPPER__
+
+/**
+ * The Shipper
+ *
+ * The shipper thread monitors the output queue and writes
+ * out and/or dispatches completed events.
+ */
+
+#include <evb/ds.h>
 
 #define MAX_RHDR_WAIT 100000*50
 
@@ -8,17 +17,6 @@ typedef struct {
   uint32_t record_type;
   uint32_t size;
 } CDABHeader;
-
-
-// FIFO based on https://stackoverflow.com/questions/215557
-#define WRITE_QUEUE_ELEMENTS 100000
-#define WRITE_QUEUE_SIZE (WRITE_QUEUE_ELEMENTS + 1)
-uint64_t write_queue[WRITE_QUEUE_SIZE];
-uint64_t write_head, write_tail;
-
-void queue_init();
-uint64_t queue_push(uint64_t x);
-uint64_t queue_pop(uint64_t *x);
 
 // Shipper
 void* shipper(void* ptr);
