@@ -26,7 +26,7 @@ extern char filename[100];
 void handler(int signal);
 
 float timediff(struct timespec t1, struct timespec t2) {
-  return t2.tv_sec - t1.tv_sec + 1e-9 * (t2.tv_nsec - t1.tv_nsec) / CLOCKS_PER_SEC;
+  return t2.tv_sec - t1.tv_sec + 1e-9 * (t2.tv_nsec - t1.tv_nsec);
 }
 
 FILE* outfile;
@@ -67,7 +67,7 @@ void* monitor(void* ptr) {
     if (nstale > 0) {
       printf(" [%i!]", nstale);
     }
-    printf(", w %i %1.2fHz %1.2fkBps => %s\n", evt, erate, wrate/1000, filename);
+    printf(", w %i/%1.2fHz/%1.2fkBps => %s\n", evt, erate, wrate/1000, filename);
 
     sleep(5);
   }

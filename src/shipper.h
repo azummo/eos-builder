@@ -12,14 +12,11 @@
 
 #define MAX_RHDR_WAIT 100000*50
 
-// CDABHeader: a header that precedes each structure in a CDAB file
-typedef struct {
-  uint32_t record_type;
-  uint32_t size;
-} CDABHeader;
-
 // Shipper
 void* shipper(void* ptr);
+
+// Send a whole packet, for a known size.
+void send_all(int socket_handle, char* data, int size);
 
 #endif
 

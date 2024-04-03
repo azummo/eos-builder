@@ -1,18 +1,41 @@
 #include <stdio.h>
 #include <evb/ds.h>
-#include <evb/listener.h>
 #include <evb/daq.h>
+#include <evb/listener.h>
 
 extern pthread_mutex_t record_lock;
 extern time_offsets offsets;
 
+CAENEvent* make_caenevent(int i, DigitizerData* caen, CAENEvent* e) {
+  if (e == NULL) {
+    e = (CAENEvent*) malloc(sizeof(CAENEvent));
+  }
+
+  e->type = caen->type;
+  e->bits = caen->bits;
+  e->samples = caen->samples;
+  e->ns_sample = caen->ns_sample;
+  e->counter = caen->counters[i];
+  e->timetag = caen->timetags[i];
+  e->exttimetag = caen->exttimetags[i];
+
+  for (int j=0; j<16; j++) {
+    e->channels[j].chID = caen->channels[j].chID;
+    e->channels[j].offset = caen->channels[j].offset;
+    e->channels[j].threshold = caen->channels[j].threshold;
+    e->channels[j].dynamic_range = caen->channels[j].dynamic_range;
+    e->channels[j].pattern = caen->channels[j].patterns[i];
+    memcpy(e->channels[j].samples, caen->channels[j].samples[i], 500*sizeof(uint16_t));
+  }
+
+  return e;
+}
 
 uint64_t daq_key(uint64_t timestamp, uint64_t* ts) {
   uint64_t t = timestamp;
   if (ts) *ts = t;
   return t / 100000;
 }
-
 
 void accept_daq(char* data) {
   DigitizerData* p = (DigitizerData*) (data+4);
@@ -33,7 +56,7 @@ void accept_daq(char* data) {
 
     if (!e) {
       e = event_create(key);
-      memcpy((void*)(&e->caen[digid]), (void*)p, sizeof(DigitizerData));
+      make_caenevent(i, p, &e->caen[digid]);
       e->caen_status |= (1 << digid);
     }
     else {
@@ -43,7 +66,7 @@ void accept_daq(char* data) {
       }
 
       pthread_mutex_lock(&e->lock);
-      memcpy((void*)(&e->caen[digid]), (void*)p, sizeof(DigitizerData));
+      make_caenevent(i, p, &e->caen[digid]);
       e->caen_status |= (1 << digid);
       pthread_mutex_unlock(&e->lock);
     }

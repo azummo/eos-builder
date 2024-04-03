@@ -27,20 +27,16 @@ Event* event_create(uint64_t key) {
 Event* event_at(uint64_t key) {
   Event* e;
   HASH_FIND(hh, events, &key, sizeof(uint64_t), e);
-  //printf("event_at %i, s=%llx, size=%u\n", (int) key, s, HASH_COUNT(events));
   return e;
 }
 
 void event_push(uint64_t key, Event* e) {
   HASH_ADD(hh, events, id, sizeof(uint64_t), e);
-  //printf("event_push %i, size=%u\n", (int) key, HASH_COUNT(events));
-  //return e;
 }
 
 Event* event_pop(uint64_t key) {
   Event* e = event_at(key);
   if (e) HASH_DEL(events, e);
-  //printf("event_pop %i, size=%u\n", (int) key, HASH_COUNT(events));
   return e;
 }
 
@@ -58,6 +54,7 @@ uint8_t event_ready(Event* s) {
   if (!s) return false;
   return (s->ptb_status && (s->caen_status & DIGITIZERS) == DIGITIZERS);
 }
+
 
 /** Output records. */
 

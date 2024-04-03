@@ -13,18 +13,53 @@
 #include <pthread.h>
 #include <stdint.h>
 #include <time.h>
-#include <evb/daq.h>
 #include <evb/ptb.h>
 #include <evb/uthash.h>
 
 #define DIGITIZERS 0x1
 #define NDIGITIZERS 1
 
+/** Output record types. */
 typedef enum {
   EMPTY,
   DETECTOR_EVENT,
   RUN_HEADER,
 } RecordType;
+
+/**
+ * @struct CDABHeader
+ *
+ * A header that precedes each structure in a CDAB record.
+ * Note: "CDAB" is just dumping structs to disk/network.
+ */
+typedef struct {
+  uint32_t record_type;  //!< RecordType, per the enum
+  uint32_t size;  //!< Record/packet size in bytes
+} CDABHeader;
+
+
+/** @struct CAENChannel */
+typedef struct {
+  uint32_t chID;
+  uint32_t offset;
+  uint32_t threshold;
+  float dynamic_range;
+  uint16_t samples[500];
+  uint16_t pattern;
+} CAENChannel;
+
+/** @struct CAENEvent */
+typedef struct {
+  uint16_t type;
+  uint16_t bits;
+  uint16_t samples;
+  float ns_sample;
+  uint32_t counter;
+  uint32_t timetag;
+  uint16_t exttimetag;
+  CAENChannel channels[16];
+} CAENEvent;
+
 
 /**
  * @struct Event
@@ -34,7 +69,7 @@ typedef enum {
 typedef struct {
   uint64_t id;  //!< The key
   RecordType type;  //!< Type of record (event data)
-  DigitizerData caen[NDIGITIZERS];  //!< Array of digitizer data
+  CAENEvent caen[NDIGITIZERS];  //!< Array of digitizer data
   ptb_trigger_t ptb;  //!< PTB record
   uint32_t caen_status;  //!< Bit mask indicating which V1730 data is filled
   uint8_t ptb_status;  //!< Boolean indicating whether PTB data is filled

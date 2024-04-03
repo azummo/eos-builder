@@ -7,6 +7,7 @@
  * Interfacing for WbLSdaq clients.
  */
 
+#include <evb/ds.h>
 #include <stdint.h>
 
 /**
@@ -37,6 +38,10 @@ typedef struct DigitizerData {
   uint16_t exttimetags[20];
   ChannelData channels[16];
 } DigitizerData;
+
+// Make a CAENEvent by copying one event from a DigitizerData
+CAENEvent* make_caenevent(int i, DigitizerData* caen, CAENEvent* e);
+
 
 /**
  * Convert a WbLSdaq timestamp to a hash table key.
