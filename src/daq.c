@@ -38,8 +38,7 @@ CAENEvent* make_caenevent(int i, DigitizerData* caen, CAENEvent* e) {
 uint64_t daq_key(uint64_t timestamp, uint64_t* ts) {
   uint64_t t = timestamp;
   if (ts) *ts = t;
-  //printf("DAQ KEY %lu -> %lu\n", timestamp, t/100000);
-  return t / 1000000;
+  return t / 4;
 }
 
 void accept_daq(char* data) {
@@ -75,14 +74,35 @@ void accept_daq(char* data) {
 
     uint64_t key = daq_key(t - offsets.caen[digid], NULL);
 
+    Event* e_prev = event_at(key-1);
     Event* e = event_at(key);
+    Event* e_next = event_at(key+1);
 
-    if (!e) {
+    int e_mask = !(e_prev == NULL);
+    e_mask |= !(e == NULL) << 1;
+    e_mask |= !(e_next == NULL) << 2;
+
+    if (!e_mask) {
       e = event_create(key);
       make_caenevent(i, p, &e->caen[digid]);
       e->caen_status |= (1 << digid);
     }
     else {
+      if (e_mask == 0x1) {
+        printf("# correcting CAEN key: %lu -> %lu\n", key, key-1);
+        e = e_prev;
+        key -= 1;
+      }
+      else if (e_mask == 0x4) {
+        printf("# correcting CAEN key: %lu -> %lu\n", key, key+1);
+        e = e_next;
+        key += 1;
+      }
+      else if (e_mask != 0x2) {
+        printf("# warning, found multiple keys. Key, mask: %lu, %i\n", key, e_mask);
+        continue;
+      }
+
       if (e->caen_status & (1 << digid)) {
         printf("# collision for caen, key %li!\n", key);
         continue;

@@ -13,8 +13,7 @@ extern time_offsets offsets;
 uint64_t ptb_key(uint64_t timestamp, uint64_t* ts) {
   uint64_t t = timestamp * 2;
   if (ts) *ts = t;
-  //printf("PTB KEY %lu -> %lu\n", timestamp, t/100000);
-  return t / 1000000;
+  return t / 4;
 }
 
 
@@ -48,14 +47,35 @@ void accept_ptb(char* data) {
 
       uint64_t key = ptb_key(ts, NULL);
 
+      Event* e_prev = event_at(key-1);
       Event* e = event_at(key);
+      Event* e_next = event_at(key+1);
 
-      if (!e) {
+      int e_mask = !(e_prev == NULL);
+      e_mask |= !(e == NULL) << 1;
+      e_mask |= !(e_next == NULL) << 2;
+
+      if (!e_mask) {
         e = event_create(key);
         memcpy((void*)(&e->ptb), (void*)t, sizeof(ptb_trigger_t));
         e->ptb_status = 1;
       }
       else {
+        if(e_mask == 0x1) {
+          printf("# correcting PTB key: %lu -> %lu\n", key, key-1);
+          e = e_prev;
+          key -= 1;
+        }
+        else if(e_mask == 0x4){
+          printf("# correcting PTB key: %lu -> %lu\n", key, key+1);
+          e = e_next;
+          key += 1;
+        }
+        else if(e_mask != 0x2) {
+          printf("# warning, found multiple keys. Key, mask: %lu, %i\n", key, e_mask);
+          continue;
+        }
+
         if (e->ptb_status) {
           printf("# collision for ptb, key %li!\n", key);
           continue;
