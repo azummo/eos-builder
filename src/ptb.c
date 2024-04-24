@@ -3,14 +3,18 @@
 #include <evb/listener.h>
 #include <evb/ptb.h>
 
+extern Event* events;
+extern Record* records;
+
 extern pthread_mutex_t record_lock;
 extern time_offsets offsets;
 
 
 uint64_t ptb_key(uint64_t timestamp, uint64_t* ts) {
-  uint64_t t = timestamp * 2.5000205;  // 125ish MHz vs. 62.5ish MHz
+  uint64_t t = timestamp * 2;
   if (ts) *ts = t;
-  return t / 100000;
+  //printf("PTB KEY %lu -> %lu\n", timestamp, t/100000);
+  return t / 1000000;
 }
 
 

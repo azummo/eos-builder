@@ -29,6 +29,7 @@ typedef struct ChannelData {
  */
 typedef struct DigitizerData {
   uint16_t type;
+  char name[50];
   uint16_t bits;
   uint16_t samples;
   uint16_t nEvents;

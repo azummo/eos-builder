@@ -3,6 +3,9 @@
 #include <evb/daq.h>
 #include <evb/listener.h>
 
+extern Event* events;
+extern Record* records;
+
 extern pthread_mutex_t record_lock;
 extern time_offsets offsets;
 
@@ -12,6 +15,7 @@ CAENEvent* make_caenevent(int i, DigitizerData* caen, CAENEvent* e) {
   }
 
   e->type = caen->type;
+  snprintf(e->name, 50, "%s", caen->name);
   e->bits = caen->bits;
   e->samples = caen->samples;
   e->ns_sample = caen->ns_sample;
@@ -34,12 +38,31 @@ CAENEvent* make_caenevent(int i, DigitizerData* caen, CAENEvent* e) {
 uint64_t daq_key(uint64_t timestamp, uint64_t* ts) {
   uint64_t t = timestamp;
   if (ts) *ts = t;
-  return t / 100000;
+  //printf("DAQ KEY %lu -> %lu\n", timestamp, t/100000);
+  return t / 1000000;
 }
 
 void accept_daq(char* data) {
   DigitizerData* p = (DigitizerData*) (data+4);
-  uint8_t digid = 0; //p->digitizer_id;  // FIXME in WbLSdaq
+  uint8_t digid = 0;
+
+  if (strncmp(p->name, "19857", 50) == 0) digid = 0;
+  if (strncmp(p->name, "19858", 50) == 0) digid = 1;
+  if (strncmp(p->name, "24190", 50) == 0) digid = 2;
+  if (strncmp(p->name, "24191", 50) == 0) digid = 3;
+  if (strncmp(p->name, "24192", 50) == 0) digid = 4;
+  if (strncmp(p->name, "24193", 50) == 0) digid = 5;
+  if (strncmp(p->name, "24194", 50) == 0) digid = 6;
+  if (strncmp(p->name, "24195", 50) == 0) digid = 7;
+  if (strncmp(p->name, "24196", 50) == 0) digid = 8;
+  if (strncmp(p->name, "24305", 50) == 0) digid = 9;
+  if (strncmp(p->name, "24306", 50) == 0) digid = 10;
+  if (strncmp(p->name, "24307", 50) == 0) digid = 11;
+  if (strncmp(p->name, "24308", 50) == 0) digid = 12;
+  if (strncmp(p->name, "24309", 50) == 0) digid = 13;
+  if (strncmp(p->name, "24310", 50) == 0) digid = 14;
+  if (strncmp(p->name, "24311", 50) == 0) digid = 15;
+  if (strncmp(p->name, "24312", 50) == 0) digid = 16;
 
   for (uint16_t i=0; i<p->nEvents; i++) {
     uint64_t timetag = p->timetags[i];

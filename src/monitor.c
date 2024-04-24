@@ -29,8 +29,6 @@ float timediff(struct timespec t1, struct timespec t2) {
   return t2.tv_sec - t1.tv_sec + 1e-9 * (t2.tv_nsec - t1.tv_nsec);
 }
 
-FILE* outfile;
-
 void* monitor(void* ptr) {
   signal(SIGINT, &handler);
 
@@ -53,9 +51,9 @@ void* monitor(void* ptr) {
     // Event check
     int nstale = 0;
     for (Event* e=events; e!=NULL; e=e->hh.next) {
-      if (timediff(e->creation_time, tw_n) > 5) {
+      if (timediff(e->creation_time, tw_n) > 5 && !event_ready(e)) {
         nstale++;
-        printf("# stale key %li (ptb %i, caen %i)\n", e->id, e->ptb_status, e->caen_status);
+        //printf("# stale key %li (ptb %i, caen %i)\n", e->id, e->ptb_status, e->caen_status);
         pthread_mutex_lock(&record_lock);
         record_push(e->id, DETECTOR_EVENT, (void*)e);
         pthread_mutex_unlock(&record_lock);

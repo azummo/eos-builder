@@ -16,8 +16,8 @@
 #include <evb/ptb.h>
 #include <evb/uthash.h>
 
-#define DIGITIZERS 0x1
-#define NDIGITIZERS 1
+#define DIGITIZERS 0x1ffff
+#define NDIGITIZERS 17
 
 /** Output record types. */
 typedef enum {
@@ -51,6 +51,7 @@ typedef struct {
 /** @struct CAENEvent */
 typedef struct {
   uint16_t type;
+  char name[50];
   uint16_t bits;
   uint16_t samples;
   float ns_sample;
