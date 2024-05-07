@@ -5,6 +5,7 @@
 #include <string.h>
 #include <pthread.h>
 #include <jemalloc/jemalloc.h>
+#include <evb/config.h>
 #include <evb/listener.h>
 #include <evb/shipper.h>
 #include <evb/monitor.h>
@@ -20,18 +21,22 @@
  * Andy Mastbaum (mastbaum@hep.upenn.edu), June 2011
  */ 
 
+Config* config = NULL;
 Event* events = NULL;
 Record* records = NULL;
 pthread_mutex_t record_lock;
 
 int main(int argc, char* argv[]) {
-    int port;
+    printf("* eos-builder\n");
+
     if(argc != 2) {
-        printf("Usage: %s <port>\n", argv[0]);
+        printf("Usage: %s <config.json>\n", argv[0]);
         exit(1);
     }
-    else
-        port = atoi(argv[1]);
+    else {
+      config = config_parse(argv[1]);
+      config_print(config);
+    }
 
     pthread_mutex_init(&record_lock, NULL);
 
@@ -42,7 +47,7 @@ int main(int argc, char* argv[]) {
 
     // launch listener (input), shipper (output), monitor threads
     pthread_t tlistener;
-    pthread_create(&tlistener, NULL, listener, (void*)&port);
+    pthread_create(&tlistener, NULL, listener, (void*)&config->evb_port);
     pthread_t tshipper;
     pthread_create(&tshipper, NULL, shipper, NULL);
     pthread_t tmonitor;

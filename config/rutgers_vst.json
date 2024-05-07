@@ -1,0 +1,17 @@
+{
+  "network": {
+    "port": 8765
+  },
+  
+  "monitor": {
+    "address": "localhost",
+    "port": 3491
+  },
+  
+  "daq": {
+    "digitizers": [
+      "19857"
+    ]
+  }
+}
+

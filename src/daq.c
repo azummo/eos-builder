@@ -2,7 +2,10 @@
 #include <evb/ds.h>
 #include <evb/daq.h>
 #include <evb/listener.h>
+#include <evb/config.h>
 
+
+extern Config* config;
 extern Event* events;
 extern Record* records;
 
@@ -43,25 +46,19 @@ uint64_t daq_key(uint64_t timestamp, uint64_t* ts) {
 
 void accept_daq(char* data) {
   DigitizerData* p = (DigitizerData*) (data+4);
-  uint8_t digid = 0;
+  int8_t digid = -1;
 
-  if (strncmp(p->name, "19857", 50) == 0) digid = 0;
-  if (strncmp(p->name, "19858", 50) == 0) digid = 1;
-  if (strncmp(p->name, "24190", 50) == 0) digid = 2;
-  if (strncmp(p->name, "24191", 50) == 0) digid = 3;
-  if (strncmp(p->name, "24192", 50) == 0) digid = 4;
-  if (strncmp(p->name, "24193", 50) == 0) digid = 5;
-  if (strncmp(p->name, "24194", 50) == 0) digid = 6;
-  if (strncmp(p->name, "24195", 50) == 0) digid = 7;
-  if (strncmp(p->name, "24196", 50) == 0) digid = 8;
-  if (strncmp(p->name, "24305", 50) == 0) digid = 9;
-  if (strncmp(p->name, "24306", 50) == 0) digid = 10;
-  if (strncmp(p->name, "24307", 50) == 0) digid = 11;
-  if (strncmp(p->name, "24308", 50) == 0) digid = 12;
-  if (strncmp(p->name, "24309", 50) == 0) digid = 13;
-  if (strncmp(p->name, "24310", 50) == 0) digid = 14;
-  if (strncmp(p->name, "24311", 50) == 0) digid = 15;
-  if (strncmp(p->name, "24312", 50) == 0) digid = 16;
+  for (int i=0; i<config->dig_ndig; i++) {
+    if (strncmp(p->name, config->dig_ids[i], 50) == 0) {
+      digid = i;
+      break;
+    }
+  }
+
+  if (digid == -1) {
+    printf("# unknown digitizer %s\n", p->name);
+    return;
+  }
 
   for (uint16_t i=0; i<p->nEvents; i++) {
     uint64_t timetag = p->timetags[i];

@@ -15,12 +15,12 @@
 #include <limits.h>
 #include <unistd.h>
 #include <jemalloc/jemalloc.h>
+#include <evb/config.h>
 #include <evb/shipper.h>
 #include <evb/ds.h>
 
-
+extern Config* config;
 extern Event* events;
-
 extern Record* records;
 extern pthread_mutex_t record_lock;
 
@@ -64,15 +64,16 @@ void* shipper(void* ptr) {
   struct addrinfo hints, *res;
   int sockfd = -1;
   if (1) {
-    printf("connecting to monitor...\n");
     memset(&hints, 0, sizeof hints);
     hints.ai_family = AF_UNSPEC;
     hints.ai_socktype = SOCK_STREAM;
-    assert(getaddrinfo("localhost", "3491", &hints, &res) == 0);
+    char portno[50];
+    snprintf(portno, 50, "%i", config->monitor_port);
+    assert(getaddrinfo(config->monitor_address, portno, &hints, &res) == 0);
     sockfd = socket(res->ai_family, res->ai_socktype, res->ai_protocol);
     assert(sockfd != -1);
     assert(connect(sockfd, res->ai_addr, res->ai_addrlen) != -1);
-    printf("connected to monitor localhost:3491\n");
+    printf("* connected to monitor %s:%i\n", config->monitor_address, config->monitor_port);
   }
 
   signal(SIGINT, &handler);
