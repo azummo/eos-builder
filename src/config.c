@@ -5,8 +5,14 @@
 #include <string.h>
 #include <yaml.h>
 #include <evb/config.h>
-
 #include <json-c/json.h>
+
+json_object* get_obj(json_object* o, char* section, char* field) {
+  json_object *o_s, *o_f;
+  assert((o_s = json_object_object_get(o, section)));
+  assert((o_f = json_object_object_get(o_s, field)));
+  return o_f;
+}
 
 Config* config_parse(char* config_file) {
   Config* config = malloc(sizeof(Config));
@@ -17,49 +23,25 @@ Config* config_parse(char* config_file) {
   assert(json);
 
   // Builder
-  json_object* builder = json_object_object_get(json, "builder");
-  assert(builder);
+  config->evb_slice = json_object_get_double(get_obj(json, "builder", "slice"));
 
-  json_object* slice = json_object_object_get(builder, "slice");
-  assert(slice);
-  config->evb_slice = json_object_get_int(slice);
+  config->evb_ptb_clk_scale = \
+    json_object_get_double(get_obj(json, "builder", "ptb_clk"));
 
-  json_object* clk = json_object_object_get(builder, "ptb_clk");
-  assert(clk);
-  config->evb_ptb_clk_scale = json_object_get_double(clk);
-
-  // Network
-  json_object* network = json_object_object_get(json, "network");
-  assert(network);
-
-  json_object* port = json_object_object_get(network, "port");
-  assert(port);
-
-  config->evb_port = json_object_get_int(port);
+  config->evb_port = json_object_get_double(get_obj(json, "network", "port"));
 
   // Monitor
-  json_object* monitor = json_object_object_get(json, "monitor");
-  assert(monitor);
+  config->monitor_address = \
+    (char*)json_object_get_string(get_obj(json, "monitor", "address"));
 
-  json_object* address = json_object_object_get(monitor, "address");
-  assert(address);
-
-  config->monitor_address = (char*)json_object_get_string(address);
-
-  port = json_object_object_get(monitor, "port");
-  assert(port);
-
-  config->monitor_port = json_object_get_int(port);
+  config->monitor_port = \
+    json_object_get_int(get_obj(json, "monitor", "port"));
 
   // DAQ
-  json_object* daq = json_object_object_get(json, "daq");
-  assert(daq);
-
-  json_object* digitizers = json_object_object_get(daq, "digitizers");
-  assert(digitizers);
-
+  json_object* digitizers = get_obj(json, "daq", "digitizers");
   config->dig_ndig = json_object_array_length(digitizers);
   config->dig_mask = 0;
+
   for (int i=0; i<config->dig_ndig; i++) {
     json_object* serial = json_object_array_get_idx(digitizers, i);
     config->dig_ids[i] = (char*) json_object_get_string(serial);
