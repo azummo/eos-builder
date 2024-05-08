@@ -4,10 +4,13 @@
 #include <string.h>
 #include <pthread.h>
 #include <jemalloc/jemalloc.h>
+#include <evb/config.h>
 #include <evb/ds.h>
 
+extern Config* config;
 extern Event* events;
 extern Record* records;
+extern Record* headers;
 extern pthread_mutex_t record_lock;
 
 /** Events */
@@ -52,40 +55,47 @@ unsigned int event_count() {
 
 uint8_t event_ready(Event* s) {
   if (!s) return false;
-  return (s->ptb_status && (s->caen_status & DIGITIZERS) == DIGITIZERS);
+  return (s->ptb_status && (s->caen_status & config->dig_mask) == config->dig_mask);
 }
 
 
 /** Output records. */
 
-void record_push(uint64_t key, RecordType type, void* data) {
+void record_push(Record** rec, uint64_t key, RecordType type, void* data) {
   Record* r = (Record*) malloc(sizeof(Record));
   r->id = key;
   r->type = type;
   r->data = data;
-  HASH_ADD(hh, records, id, sizeof(uint64_t), r);
+  HASH_ADD(hh, *rec, id, sizeof(uint64_t), r);
 }
 
-Record* record_pop(uint64_t key) {
-  Record* r = NULL;
-  HASH_FIND(hh, records, &key, sizeof(uint64_t), r);
-  if (r) HASH_DEL(records, r);
+Record* record_at(Record** rec, uint64_t key) {
+  Record* r;
+  HASH_FIND(hh, *rec, &key, sizeof(uint64_t), r);
   return r;
 }
 
-unsigned int record_count() {
-  return HASH_COUNT(records);
+
+Record* record_pop(Record** rec, uint64_t key) {
+  Record* r = NULL;
+  HASH_FIND(hh, *rec, &key, sizeof(uint64_t), r);
+  if (r) HASH_DEL(*rec, r);
+  return r;
+}
+
+unsigned int record_count(Record** rec) {
+  return HASH_COUNT(*rec);
 }
 
 int64_t record_by_id(const Record* a, const Record* b) {
   return (a->id - b->id);
 }
 
-uint64_t record_next() {
-  if (record_count() == 0) return -1;
+uint64_t record_next(Record** rec) {
+  if (record_count(rec) == 0) return -1;
   pthread_mutex_lock(&record_lock);
-  HASH_SORT(records, record_by_id);
+  HASH_SORT(*rec, record_by_id);
   pthread_mutex_unlock(&record_lock);
-  return records->id;
+  return (*rec)->id;
 }
 

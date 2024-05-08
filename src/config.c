@@ -8,45 +8,27 @@
 
 #include <json-c/json.h>
 
-/*
-typedef struct {
-  int evb_port;  //!< Event builder port
-
-  char* monitor_address;  //!< Monitor address
-  int monitor_port;  //!< Monitor port
-
-  uint8_t dig_ndig;  //!< Number of digitizers
-  uint32_t dig_mask;  //!< Bit mask for expected digitizers
-  char* dig_ids[MAX_DIGITIZERS];  //!< Digitizer ID serial names
-} Config;
-{
-  "network": {
-    "port": 8765
-  },
-  
-  "monitor": {
-    "address": "localhost",
-    "port": 3491
-  },
-  
-  "daq": {
-    "digitizers": [
-      "serial-19857"
-    ]
-  }
-}
-
-*/
-
 Config* config_parse(char* config_file) {
   Config* config = malloc(sizeof(Config));
   config_file = "./config/rutgers_vst.json";
   config->file = config_file;
 
-  // Network
   json_object* json = json_object_from_file(config_file);
   assert(json);
 
+  // Builder
+  json_object* builder = json_object_object_get(json, "builder");
+  assert(builder);
+
+  json_object* slice = json_object_object_get(builder, "slice");
+  assert(slice);
+  config->evb_slice = json_object_get_int(slice);
+
+  json_object* clk = json_object_object_get(builder, "ptb_clk");
+  assert(clk);
+  config->evb_ptb_clk_scale = json_object_get_double(clk);
+
+  // Network
   json_object* network = json_object_object_get(json, "network");
   assert(network);
 

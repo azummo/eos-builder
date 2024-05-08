@@ -9,6 +9,8 @@ typedef struct {
   char* file;  //!< Config file
 
   int evb_port;  //!< Event builder port
+  int evb_slice;  //!< Timestamp chunking
+  float evb_ptb_clk_scale;  //!< PTB vs. CAEN clock scale
 
   char* monitor_address;  //!< Monitor address
   int monitor_port;  //!< Monitor port

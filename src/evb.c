@@ -24,6 +24,7 @@
 Config* config = NULL;
 Event* events = NULL;
 Record* records = NULL;
+Record* headers = NULL;
 pthread_mutex_t record_lock;
 
 int main(int argc, char* argv[]) {
@@ -40,10 +41,10 @@ int main(int argc, char* argv[]) {
 
     pthread_mutex_init(&record_lock, NULL);
 
-    // fake RHDR for testing
-    RHDR* rhdr = (RHDR*) malloc(sizeof(RHDR));
-    rhdr->type = RUN_HEADER;
-    record_push(0, RUN_HEADER, rhdr);
+    // fake RunStart for testing
+    RunStart* rhdr = (RunStart*) malloc(sizeof(RunStart));
+    rhdr->type = RUN_START;
+    record_push(&headers, 0, RUN_START, rhdr);
 
     // launch listener (input), shipper (output), monitor threads
     pthread_t tlistener;

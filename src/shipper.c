@@ -14,6 +14,7 @@
 #include <time.h>
 #include <limits.h>
 #include <unistd.h>
+#include <uuid/uuid.h>
 #include <jemalloc/jemalloc.h>
 #include <evb/config.h>
 #include <evb/shipper.h>
@@ -22,6 +23,7 @@
 extern Config* config;
 extern Event* events;
 extern Record* records;
+extern Record* headers;
 extern pthread_mutex_t record_lock;
 
 uint32_t bytes_written;
@@ -53,17 +55,17 @@ void send_all(int socket_handle, char* data, int size) {
 
 void* shipper(void* ptr) {
   outfile = NULL;
-  int run_id = 0;
-  int start_key = 0;
+  //int run_id = -1;
+  //int start_key = 0;
 
-  sprintf(filename, "run_%i.cdab", 0);
-  printf("> Run %i, key %i => %s\n", run_id, start_key, filename);
-  outfile = fopen(filename, "wb+");
+  //sprintf(filename, "run_%i.cdab", 0);
+  //printf("> Run %i, key %i => %s\n", run_id, start_key, filename);
+  //outfile = fopen(filename, "wb+");
 
   // Connect to a monitor
   struct addrinfo hints, *res;
   int sockfd = -1;
-  if (1) {
+  if (strcmp(config->monitor_address, "") != 0) {
     memset(&hints, 0, sizeof hints);
     hints.ai_family = AF_UNSPEC;
     hints.ai_socktype = SOCK_STREAM;
@@ -72,30 +74,77 @@ void* shipper(void* ptr) {
     assert(getaddrinfo(config->monitor_address, portno, &hints, &res) == 0);
     sockfd = socket(res->ai_family, res->ai_socktype, res->ai_protocol);
     assert(sockfd != -1);
-    assert(connect(sockfd, res->ai_addr, res->ai_addrlen) != -1);
-    printf("* connected to monitor %s:%i\n", config->monitor_address, config->monitor_port);
+    int r = connect(sockfd, res->ai_addr, res->ai_addrlen);
+    if (r == -1) {
+      printf("# error connecting to monitor %s:%i\n",
+             config->monitor_address, config->monitor_port);
+    }
+    assert(r != -1);
+    printf("* connected to monitor %s:%i\n",
+           config->monitor_address, config->monitor_port);
   }
 
   signal(SIGINT, &handler);
-  while(1) {
-    uint64_t key = record_next();
+  while (1) {
+    uint64_t h_key = record_next(&headers);
+    uint64_t e_key = record_next(&records);
 
-    if (key == -1) {
+    // Handle run start/stop
+    if (h_key != -1) {
+      Record* r = record_pop(&headers, h_key);
+
+      if (r && r->type == RUN_START && h_key <= e_key) {
+        RunStart* rhdr = (RunStart*) r->data;
+        int run_id = rhdr->run_id;
+
+        if (outfile) {
+          printf("# new run %i started with run active.\n", run_id);
+          fclose(outfile);
+          outfile = NULL;
+        }
+
+        sprintf(filename, "run_%06i.cdab", run_id);
+        printf("> Start run %i, key %li => %s\n", run_id, h_key, filename);
+        outfile = fopen(filename, "wb+");
+      }
+      else if (r && r->type == RUN_END && h_key >= e_key) {
+        RunEnd* rhdr = (RunEnd*) r->data;
+        int run_id = rhdr->run_id;
+
+        if (outfile) {
+          printf("< End run %i, key %li => %s\n", run_id, h_key, filename);
+          fclose(outfile);
+          outfile = NULL;
+        }
+      }
+    }
+
+    if (e_key == -1) {
       sleep(1);
       continue;
     }
 
-    Record* r = record_pop(key);
+    if (!outfile) {
+      printf("# events received with no run active, key %li.\n", e_key);
+      uuid_t uuid;
+      char suuid[400];
+      uuid_generate(uuid);
+      uuid_unparse(uuid, suuid);
+      snprintf(filename, 500, "default_%s.cdab", suuid);
+      printf("> Default run %s, key %li => %s\n", uuid, e_key, filename);
+    }
+
+    Record* r = record_pop(&records, e_key);
     if (!r) {
-      printf("popped null Record pointer!? key=%li\n", key);
+      printf("popped null Record pointer!? key=%li\n", e_key);
       continue;
     }
 
     if (r->type == DETECTOR_EVENT) {
-      Event* e = event_pop(key);
+      Event* e = event_pop(e_key);
 
       if (!e) {
-        printf("popped null Event pointer!? key=%li\n", key);
+        printf("popped null Event pointer!? key=%li\n", e_key);
         continue;
       }
 
@@ -117,17 +166,6 @@ void* shipper(void* ptr) {
         send_all(sockfd, (char*) &cdh, sizeof(CDABHeader));
         send_all(sockfd, (char*) e, sizeof(Event));
       }
-    }
-
-    else if (r->type == RUN_HEADER) {
-      Record* h = record_pop(key);
-
-      if (!h) {
-        printf("popped null Header pointer!? key=%li\n", key);
-        continue;
-      }
-
-      printf("write a header\n");
     }
 
     else {

@@ -1,4 +1,9 @@
 {
+  "builder": {
+    "slice": 4,
+    "ptb_clk": 2.5
+  },
+
   "network": {
     "port": 8765
   },

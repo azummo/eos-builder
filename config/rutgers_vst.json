@@ -1,4 +1,9 @@
 {
+  "builder": {
+    "slice": 10000,
+    "ptb_clk": 2.5000205
+  },
+
   "network": {
     "port": 8765
   },
@@ -10,7 +15,7 @@
   
   "daq": {
     "digitizers": [
-      "19857"
+      "serial-19857"
     ]
   }
 }

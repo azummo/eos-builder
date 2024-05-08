@@ -1,8 +1,10 @@
 #include <stdio.h>
+#include <evb/config.h>
 #include <evb/ds.h>
 #include <evb/listener.h>
 #include <evb/ptb.h>
 
+extern Config* config;
 extern Event* events;
 extern Record* records;
 
@@ -11,9 +13,9 @@ extern time_offsets offsets;
 
 
 uint64_t ptb_key(uint64_t timestamp, uint64_t* ts) {
-  uint64_t t = timestamp * 2;
+  uint64_t t = timestamp * config->evb_ptb_clk_scale;
   if (ts) *ts = t;
-  return t / 4;
+  return t / config->evb_slice;
 }
 
 
@@ -89,7 +91,7 @@ void accept_ptb(char* data) {
 
       if (event_ready(e)) {
         pthread_mutex_lock(&record_lock);
-        record_push(key, DETECTOR_EVENT, (void*)e);
+        record_push(&records, key, DETECTOR_EVENT, (void*)e);
         pthread_mutex_unlock(&record_lock);
       }
     }

@@ -40,6 +40,7 @@ typedef struct DigitizerData {
   ChannelData channels[16];
 } DigitizerData;
 
+
 // Make a CAENEvent by copying one event from a DigitizerData
 CAENEvent* make_caenevent(int i, DigitizerData* caen, CAENEvent* e);
 

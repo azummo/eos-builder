@@ -8,7 +8,7 @@ LFLAGS = -L/usr/local/lib
 
 CC = gcc $(FLAGS)
 
-LIBS = -ljemalloc -pthread -lrt -ljson-c
+LIBS = -ljemalloc -pthread -lrt -ljson-c -luuid
 
 EXE = ./bin/evb
 

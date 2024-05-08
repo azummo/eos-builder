@@ -10,6 +10,7 @@
 #include <signal.h>
 #include <time.h>
 #include <jemalloc/jemalloc.h>
+#include <evb/config.h>
 #include <evb/listener.h>
 #include <evb/shipper.h>
 #include <evb/ds.h>
@@ -20,6 +21,10 @@
 #define NUM_THREADS 5
 
 extern FILE* outfile;
+extern Config* config;
+extern Event* events;
+extern Record* records;
+extern Record* headers;
 
 int sockfd, thread_sockfd[NUM_THREADS];
 
@@ -43,8 +48,11 @@ void handler(int signal) {
     if (event_count()) {
       printf("Warning: exiting with non-empty event buffer\n");
     }
-    if (record_count()) {
+    if (record_count(&records)) {
       printf("Warning: exiting with non-empty output buffer\n");
+    }
+    if (record_count(&headers)) {
+      printf("Warning: exiting with non-empty header buffer\n");
     }
     printf("Closing sockets...\n");
     close_sockets();

@@ -17,6 +17,8 @@
 #include <evb/shipper.h>
 
 extern Event* events;
+extern Record* records;
+extern Record* headers;
 extern pthread_mutex_t record_lock;
 
 extern uint32_t bytes_written;
@@ -55,7 +57,7 @@ void* monitor(void* ptr) {
         nstale++;
         //printf("# stale key %li (ptb %i, caen %i)\n", e->id, e->ptb_status, e->caen_status);
         pthread_mutex_lock(&record_lock);
-        record_push(e->id, DETECTOR_EVENT, (void*)e);
+        record_push(&records, e->id, DETECTOR_EVENT, (void*)e);
         pthread_mutex_unlock(&record_lock);
       }
     }
