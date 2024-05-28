@@ -1,5 +1,7 @@
 {
   "builder": {
+    "output_dir": "/home/eos/eos-builder/data",
+    "max_file_size": 0.1,
     "slice": 10000,
     "ptb_clk": 2.5000205
   },
@@ -14,6 +16,7 @@
   },
   
   "daq": {
+    "ptb_exists": 0,
     "digitizers": [
       "serial-19857"
     ]

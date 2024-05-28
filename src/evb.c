@@ -44,6 +44,7 @@ int main(int argc, char* argv[]) {
     // fake RunStart for testing
     RunStart* rhdr = (RunStart*) malloc(sizeof(RunStart));
     rhdr->type = RUN_START;
+    rhdr->run_id = 0;
     record_push(&headers, 0, RUN_START, rhdr);
 
     // launch listener (input), shipper (output), monitor threads

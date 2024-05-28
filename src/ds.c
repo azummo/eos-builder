@@ -21,6 +21,11 @@ Event* event_create(uint64_t key) {
   e->type = DETECTOR_EVENT;
   e->caen_status = 0;
   e->ptb_status = 0;
+  if(!config->ptb_exists) {
+    e->ptb.trigger_word = 0;
+    e->ptb.timestamp = 0;
+    e->ptb.word_type = 0;
+  }
   pthread_mutex_init(&e->lock, NULL);
   clock_gettime(CLOCK_MONOTONIC, &e->creation_time);
   event_push(key, e);
@@ -55,7 +60,8 @@ unsigned int event_count() {
 
 uint8_t event_ready(Event* s) {
   if (!s) return false;
-  return (s->ptb_status && (s->caen_status & config->dig_mask) == config->dig_mask);
+  return ((s->ptb_status || !config->ptb_exists) &&
+          (s->caen_status & config->dig_mask) == config->dig_mask);
 }
 
 

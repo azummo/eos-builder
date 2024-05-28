@@ -7,6 +7,7 @@
 #include <string.h>
 #include <sys/socket.h>
 #include <sys/types.h>
+#include <sys/stat.h>
 #include <netinet/in.h>
 #include <netdb.h>
 #include <pthread.h>
@@ -27,10 +28,12 @@ extern Record* headers;
 extern pthread_mutex_t record_lock;
 
 uint32_t bytes_written;
+double file_gigabytes_written;
 uint32_t events_written;
 
 void handler(int signal);
 
+char fileid[80] = "";
 char filename[100] = "";
 FILE* outfile;
 
@@ -85,6 +88,9 @@ void* shipper(void* ptr) {
   }
 
   signal(SIGINT, &handler);
+  int run_id = 0;
+  int subrun_id = 0;
+
   while (1) {
     uint64_t h_key = record_next(&headers);
     uint64_t e_key = record_next(&records);
@@ -95,15 +101,23 @@ void* shipper(void* ptr) {
 
       if (r && r->type == RUN_START && h_key <= e_key) {
         RunStart* rhdr = (RunStart*) r->data;
-        int run_id = rhdr->run_id;
+        run_id = rhdr->run_id;
 
         if (outfile) {
           printf("# new run %i started with run active.\n", run_id);
           fclose(outfile);
           outfile = NULL;
         }
-
-        sprintf(filename, "run_%06i.cdab", run_id);
+        struct stat sb;
+        if (stat(config->output_dir, &sb) == 0 && S_ISDIR(sb.st_mode)){
+          sprintf(fileid, "%s/run_%06i", config->output_dir, run_id);
+        }
+	else {
+          printf("Output directory does not exist\n");
+	  printf("Outputting to current directory\n");
+          sprintf(fileid, "run_%06i", run_id);
+        }
+        sprintf(filename, "%s_%03i.cdab", fileid, subrun_id);
         printf("> Start run %i, key %li => %s\n", run_id, h_key, filename);
         outfile = fopen(filename, "wb+");
       }
@@ -160,11 +174,22 @@ void* shipper(void* ptr) {
       fwrite(e, sizeof(Event), 1, outfile);
       free(e);
       bytes_written += sizeof(Event) + sizeof(CDABHeader);
+      file_gigabytes_written += (double)(sizeof(Event) + sizeof(CDABHeader))/1e9;
       events_written++;
 
       if (sockfd > -1) {
         send_all(sockfd, (char*) &cdh, sizeof(CDABHeader));
         send_all(sockfd, (char*) e, sizeof(Event));
+      }
+
+      if (file_gigabytes_written > config->max_file_size) {
+        subrun_id++;
+        fclose(outfile);
+        outfile = NULL;
+        sprintf(filename, "%s_%03i.cdab", fileid, subrun_id);
+        printf("> Start subrun %i => %s\n", subrun_id, filename);
+        outfile = fopen(filename, "wb+");
+        file_gigabytes_written = 0;
       }
     }
 

@@ -1,7 +1,9 @@
 {
   "builder": {
+    "output_dir": "/mnt/raid/data/evb/",
+    "max_file_size": 10,
     "slice": 4,
-    "ptb_clk": 2.5
+    "ptb_clk": 2
   },
 
   "network": {
@@ -14,6 +16,7 @@
   },
   
   "daq": {
+    "ptb_exists": 1,
     "digitizers": [
       "19857",
       "19858",

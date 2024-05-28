@@ -31,7 +31,10 @@ CAENEvent* make_caenevent(int i, DigitizerData* caen, CAENEvent* e) {
     e->channels[j].threshold = caen->channels[j].threshold;
     e->channels[j].dynamic_range = caen->channels[j].dynamic_range;
     e->channels[j].pattern = caen->channels[j].patterns[i];
-    memcpy(e->channels[j].samples, caen->channels[j].samples[i], 500*sizeof(uint16_t));
+    memcpy(e->channels[j].samples, caen->channels[j].samples[i], e->samples*sizeof(uint16_t));
+    if(e->samples < 500) {
+      memset(&e->channels[j].samples[e->samples], UINT16_MAX, (500-e->samples)*sizeof(uint16_t));
+    }
   }
 
   return e;
@@ -85,12 +88,10 @@ void accept_daq(char* data) {
     }
     else {
       if (e_mask == 0x1) {
-        printf("# correcting CAEN key: %lu -> %lu\n", key, key-1);
         e = e_prev;
         key -= 1;
       }
       else if (e_mask == 0x4) {
-        printf("# correcting CAEN key: %lu -> %lu\n", key, key+1);
         e = e_next;
         key += 1;
       }

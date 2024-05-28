@@ -13,7 +13,13 @@ extern time_offsets offsets;
 
 
 uint64_t ptb_key(uint64_t timestamp, uint64_t* ts) {
-  uint64_t t = timestamp * config->evb_ptb_clk_scale;
+  uint64_t t;
+  if(config->evb_ptb_clk_scale == (uint64_t)config->evb_ptb_clk_scale) {
+    t = timestamp * (uint64_t)config->evb_ptb_clk_scale;
+  }
+  else {
+    t = timestamp * config->evb_ptb_clk_scale;
+  }
   if (ts) *ts = t;
   return t / config->evb_slice;
 }
@@ -64,12 +70,10 @@ void accept_ptb(char* data) {
       }
       else {
         if(e_mask == 0x1) {
-          printf("# correcting PTB key: %lu -> %lu\n", key, key-1);
           e = e_prev;
           key -= 1;
         }
         else if(e_mask == 0x4){
-          printf("# correcting PTB key: %lu -> %lu\n", key, key+1);
           e = e_next;
           key += 1;
         }
