@@ -102,6 +102,7 @@ void* shipper(void* ptr) {
       if (r && r->type == RUN_START && h_key <= e_key) {
         RunStart* rhdr = (RunStart*) r->data;
         run_id = rhdr->run_id;
+        subrun_id = 0;
 
         if (outfile) {
           printf("# new run %i started with run active.\n", run_id);
