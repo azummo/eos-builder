@@ -1,7 +1,7 @@
 {
   "builder": {
-    "output_dir": "/mnt/raid/data/evb/",
-    "max_file_size": 10,
+    "output_dir": "/mnt/raid/data/water_fill/evb-test/test_7/",
+    "max_file_size": 1.0,
     "slice": 4,
     "ptb_clk": 2
   },
@@ -11,14 +11,13 @@
   },
   
   "monitor": {
-    "address": "localhost",
+    "address": "eos-db.localdomain",
     "port": 3491
   },
   
   "daq": {
     "ptb_exists": 1,
     "digitizers": [
-      "19857",
       "19858",
       "24190",
       "24191",
@@ -34,7 +33,8 @@
       "24309",
       "24310",
       "24311",
-      "24312"
+      "24312",
+      "19857"
     ]
   }
 }

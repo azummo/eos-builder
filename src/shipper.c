@@ -185,11 +185,10 @@ void* shipper(void* ptr) {
 
       if (file_gigabytes_written > config->max_file_size) {
         subrun_id++;
-        fclose(outfile);
-        outfile = NULL;
         sprintf(filename, "%s_%03i.cdab", fileid, subrun_id);
-        printf("> Start subrun %i => %s\n", subrun_id, filename);
+	fclose(outfile);
         outfile = fopen(filename, "wb+");
+	printf("> Start subrun %i => %s\n", subrun_id, filename);
         file_gigabytes_written = 0;
       }
     }

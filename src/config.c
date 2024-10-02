@@ -3,7 +3,6 @@
 #include <stdio.h>
 #include <stdint.h>
 #include <string.h>
-#include <yaml.h>
 #include <evb/config.h>
 #include <json-c/json.h>
 

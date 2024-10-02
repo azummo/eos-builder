@@ -11,7 +11,6 @@ extern Record* records;
 extern pthread_mutex_t record_lock;
 extern time_offsets offsets;
 
-
 uint64_t ptb_key(uint64_t timestamp, uint64_t* ts) {
   uint64_t t;
   if(config->evb_ptb_clk_scale == (uint64_t)config->evb_ptb_clk_scale) {

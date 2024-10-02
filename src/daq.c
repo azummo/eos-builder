@@ -101,12 +101,12 @@ void accept_daq(char* data) {
         key += 1;
       }
       else if (e_mask != 0x2) {
-        printf("# warning, found multiple keys. Key, mask: %lu, %i\n", key, e_mask);
+        printf("# warning, found multiple keys. Key, mask: %lu, %u\n", key, e_mask);
         continue;
       }
 
       if (e->caen_status & (1 << digid)) {
-        printf("# collision for caen, key %li!\n", key);
+        printf("# collision for caen, key %lu!\n", key);
         continue;
       }
 
