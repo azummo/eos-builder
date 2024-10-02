@@ -21,6 +21,7 @@ CAENEvent* make_caenevent(int i, DigitizerData* caen, CAENEvent* e) {
   e->bits = caen->bits;
   e->samples = caen->samples;
   e->ns_sample = caen->ns_sample;
+  e->channel_enabled_mask = caen->channel_enabled_mask;
   e->counter = caen->counters[i];
   e->timetag = caen->timetags[i];
   e->exttimetag = caen->exttimetags[i];
@@ -32,8 +33,8 @@ CAENEvent* make_caenevent(int i, DigitizerData* caen, CAENEvent* e) {
     e->channels[j].dynamic_range = caen->channels[j].dynamic_range;
     e->channels[j].pattern = caen->channels[j].patterns[i];
     memcpy(e->channels[j].samples, caen->channels[j].samples[i], e->samples*sizeof(uint16_t));
-    if(e->samples < 500) {
-      memset(&e->channels[j].samples[e->samples], UINT16_MAX, (500-e->samples)*sizeof(uint16_t));
+    if(e->samples < 200) {
+      memset(&e->channels[j].samples[e->samples], UINT16_MAX, (200-e->samples)*sizeof(uint16_t));
     }
   }
 
@@ -63,6 +64,10 @@ void accept_daq(char* data) {
   }
 
   for (uint16_t i=0; i<p->nEvents; i++) {
+    if(i>=20) {
+      printf("Builder recieved > 20 events: nEvents = %i\n",p->nEvents);
+      break;
+    }
     uint64_t timetag = p->timetags[i];
     uint64_t exttimetag = p->exttimetags[i];
     uint64_t t = (exttimetag << 32) | timetag;

@@ -19,7 +19,7 @@ typedef struct ChannelData {
   uint32_t offset;
   uint32_t threshold;
   float dynamic_range;
-  uint16_t samples[20][500];
+  uint16_t samples[20][200];
   uint16_t patterns[20];
 } ChannelData;
 
@@ -34,6 +34,7 @@ typedef struct DigitizerData {
   uint16_t samples;
   uint16_t nEvents;
   float ns_sample;
+  uint16_t channel_enabled_mask;
   uint32_t counters[20];
   uint32_t timetags[20];
   uint16_t exttimetags[20];

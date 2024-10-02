@@ -22,7 +22,7 @@ Event* event_create(uint64_t key) {
   e->caen_status = 0;
   e->ptb_status = 0;
   if(!config->ptb_exists) {
-    e->ptb.trigger_word = 0;
+    e->ptb.trigger_word = 1;
     e->ptb.timestamp = 0;
     e->ptb.word_type = 0;
   }
@@ -64,6 +64,19 @@ uint8_t event_ready(Event* s) {
           (s->caen_status & config->dig_mask) == config->dig_mask);
 }
 
+/** Runs. */
+
+void accept_run_start(char* data) {
+  RunStart* rs = (RunStart*) (data+4);
+  rs->first_event_id /= config->evb_slice;
+  record_push(&headers, rs->first_event_id, RUN_START, (void*)rs);
+}
+
+void accept_run_end(char* data) {
+  RunEnd* re = (RunEnd*) (data+4);
+  re->last_event_id /= config->evb_slice;
+  record_push(&headers, re->last_event_id, RUN_END, (void*)re);
+}
 
 /** Output records. */
 
@@ -80,7 +93,6 @@ Record* record_at(Record** rec, uint64_t key) {
   HASH_FIND(hh, *rec, &key, sizeof(uint64_t), r);
   return r;
 }
-
 
 Record* record_pop(Record** rec, uint64_t key) {
   Record* r = NULL;

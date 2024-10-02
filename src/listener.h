@@ -56,6 +56,8 @@ typedef enum {
   CMD_PACKET,
   PTB_PACKET,
   DAQ_PACKET,
+  RUN_START_PACKET,
+  RUN_END_PACKET,
   UNK_PACKET,
 } PacketType;
 

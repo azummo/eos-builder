@@ -138,6 +138,18 @@ void* listener_child(void* psock) {
         break;
       }
 
+      case (RUN_START_PACKET): {
+        recv_all(sock, packet_buffer+4, sizeof(RunStart));
+        accept_run_start(packet_buffer);
+        break;
+      }
+
+      case (RUN_END_PACKET): {
+        recv_all(sock, packet_buffer+4, sizeof(RunEnd));
+        accept_run_end(packet_buffer);
+        break;
+      }
+
       default:
         printf("Unknown packet type %u on socket %i\n", (int)type, sock);
         char ss[50];

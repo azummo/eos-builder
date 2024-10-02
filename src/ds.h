@@ -44,7 +44,7 @@ typedef struct {
   uint32_t offset;
   uint32_t threshold;
   float dynamic_range;
-  uint16_t samples[500];
+  uint16_t samples[200];
   uint16_t pattern;
 } CAENChannel;
 
@@ -55,6 +55,7 @@ typedef struct {
   uint16_t bits;
   uint16_t samples;
   float ns_sample;
+  uint16_t channel_enabled_mask;
   uint32_t counter;
   uint32_t timetag;
   uint16_t exttimetag;
@@ -100,6 +101,36 @@ unsigned int event_count();
 // Check whether all components of an event are populated
 uint8_t event_ready(Event* s);
 
+/**
+ * @struct RHDR
+ *
+ * RHDR: SNO/SNO+ run header
+*/
+typedef struct {
+  uint32_t type;
+  uint32_t date;
+  uint32_t time;
+  uint32_t daq_ver;
+  uint32_t runmask;
+  uint64_t first_event_id;
+  uint32_t run_id;
+} RunStart;
+
+typedef struct {
+  uint32_t type;
+  uint32_t date;
+  uint32_t time;
+  uint32_t daq_ver;
+  uint32_t runmask;
+  uint64_t last_event_id;
+  uint32_t run_id;
+} RunEnd;
+
+// Handle run start header
+void accept_run_start(char* data);
+
+// Handle run end header
+void accept_run_end(char* data);
 
 /**
  * @struct Record
@@ -129,32 +160,6 @@ unsigned int record_count(Record** rec);
 
 // Get the key for the next record to process (key sorted)
 uint64_t record_next(Record** rec);
-
-
-/**
- * @struct RHDR
- *
- * RHDR: SNO/SNO+ run header
-*/
-typedef struct {
-  uint32_t type;
-  uint32_t date;
-  uint32_t time;
-  uint32_t daq_ver;
-  uint32_t runmask;
-  uint32_t first_event_id;
-  uint32_t run_id;
-} RunStart;
-
-typedef struct {
-  uint32_t type;
-  uint32_t date;
-  uint32_t time;
-  uint32_t daq_ver;
-  uint32_t runmask;
-  uint32_t last_event_id;
-  uint32_t run_id;
-} RunEnd;
 
 #endif
 

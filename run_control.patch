@@ -1,0 +1,237 @@
+diff --git a/config/rutgers_vst.json b/config/rutgers_vst.json
+index 14c0ba5..b66273e 100644
+--- a/config/rutgers_vst.json
++++ b/config/rutgers_vst.json
+@@ -1,8 +1,8 @@
+ {
+   "builder": {
+     "output_dir": "/home/eos/eos-builder/data",
+-    "max_file_size": 0.1,
+-    "slice": 10000,
++    "max_file_size": 1.0,
++    "slice": 4,
+     "ptb_clk": 2.5000205
+   },
+ 
+diff --git a/src/daq.c b/src/daq.c
+index ca5871d..558ae2d 100644
+--- a/src/daq.c
++++ b/src/daq.c
+@@ -21,6 +21,7 @@ CAENEvent* make_caenevent(int i, DigitizerData* caen, CAENEvent* e) {
+   e->bits = caen->bits;
+   e->samples = caen->samples;
+   e->ns_sample = caen->ns_sample;
++  e->channel_enabled_mask = caen->channel_enabled_mask;
+   e->counter = caen->counters[i];
+   e->timetag = caen->timetags[i];
+   e->exttimetag = caen->exttimetags[i];
+@@ -32,8 +33,8 @@ CAENEvent* make_caenevent(int i, DigitizerData* caen, CAENEvent* e) {
+     e->channels[j].dynamic_range = caen->channels[j].dynamic_range;
+     e->channels[j].pattern = caen->channels[j].patterns[i];
+     memcpy(e->channels[j].samples, caen->channels[j].samples[i], e->samples*sizeof(uint16_t));
+-    if(e->samples < 500) {
+-      memset(&e->channels[j].samples[e->samples], UINT16_MAX, (500-e->samples)*sizeof(uint16_t));
++    if(e->samples < 200) {
++      memset(&e->channels[j].samples[e->samples], UINT16_MAX, (200-e->samples)*sizeof(uint16_t));
+     }
+   }
+ 
+@@ -63,6 +64,10 @@ void accept_daq(char* data) {
+   }
+ 
+   for (uint16_t i=0; i<p->nEvents; i++) {
++    if(i>=20) {
++      printf("Builder recieved > 20 events: nEvents = %i\n",p->nEvents);
++      break;
++    }
+     uint64_t timetag = p->timetags[i];
+     uint64_t exttimetag = p->exttimetags[i];
+     uint64_t t = (exttimetag << 32) | timetag;
+diff --git a/src/daq.h b/src/daq.h
+index d3788ff..c35d209 100644
+--- a/src/daq.h
++++ b/src/daq.h
+@@ -19,7 +19,7 @@ typedef struct ChannelData {
+   uint32_t offset;
+   uint32_t threshold;
+   float dynamic_range;
+-  uint16_t samples[20][500];
++  uint16_t samples[20][200];
+   uint16_t patterns[20];
+ } ChannelData;
+ 
+@@ -34,6 +34,7 @@ typedef struct DigitizerData {
+   uint16_t samples;
+   uint16_t nEvents;
+   float ns_sample;
++  uint16_t channel_enabled_mask;
+   uint32_t counters[20];
+   uint32_t timetags[20];
+   uint16_t exttimetags[20];
+diff --git a/src/ds.c b/src/ds.c
+index 55713b2..5819347 100644
+--- a/src/ds.c
++++ b/src/ds.c
+@@ -22,7 +22,7 @@ Event* event_create(uint64_t key) {
+   e->caen_status = 0;
+   e->ptb_status = 0;
+   if(!config->ptb_exists) {
+-    e->ptb.trigger_word = 0;
++    e->ptb.trigger_word = 1;
+     e->ptb.timestamp = 0;
+     e->ptb.word_type = 0;
+   }
+@@ -64,6 +64,19 @@ uint8_t event_ready(Event* s) {
+           (s->caen_status & config->dig_mask) == config->dig_mask);
+ }
+ 
++/** Runs. */
++
++void accept_run_start(char* data) {
++  RunStart* rs = (RunStart*) (data+4);
++  rs->first_event_id /= config->evb_slice;
++  record_push(&headers, rs->first_event_id, RUN_START, (void*)rs);
++}
++
++void accept_run_end(char* data) {
++  RunEnd* re = (RunEnd*) (data+4);
++  re->last_event_id /= config->evb_slice;
++  record_push(&headers, re->last_event_id, RUN_END, (void*)re);
++}
+ 
+ /** Output records. */
+ 
+@@ -81,7 +94,6 @@ Record* record_at(Record** rec, uint64_t key) {
+   return r;
+ }
+ 
+-
+ Record* record_pop(Record** rec, uint64_t key) {
+   Record* r = NULL;
+   HASH_FIND(hh, *rec, &key, sizeof(uint64_t), r);
+diff --git a/src/ds.h b/src/ds.h
+index 53673af..279d352 100644
+--- a/src/ds.h
++++ b/src/ds.h
+@@ -44,7 +44,7 @@ typedef struct {
+   uint32_t offset;
+   uint32_t threshold;
+   float dynamic_range;
+-  uint16_t samples[500];
++  uint16_t samples[200];
+   uint16_t pattern;
+ } CAENChannel;
+ 
+@@ -55,6 +55,7 @@ typedef struct {
+   uint16_t bits;
+   uint16_t samples;
+   float ns_sample;
++  uint16_t channel_enabled_mask;
+   uint32_t counter;
+   uint32_t timetag;
+   uint16_t exttimetag;
+@@ -100,6 +101,36 @@ unsigned int event_count();
+ // Check whether all components of an event are populated
+ uint8_t event_ready(Event* s);
+ 
++/**
++ * @struct RHDR
++ *
++ * RHDR: SNO/SNO+ run header
++*/
++typedef struct {
++  uint32_t type;
++  uint32_t date;
++  uint32_t time;
++  uint32_t daq_ver;
++  uint32_t runmask;
++  uint64_t first_event_id;
++  uint32_t run_id;
++} RunStart;
++
++typedef struct {
++  uint32_t type;
++  uint32_t date;
++  uint32_t time;
++  uint32_t daq_ver;
++  uint32_t runmask;
++  uint64_t last_event_id;
++  uint32_t run_id;
++} RunEnd;
++
++// Handle run start header
++void accept_run_start(char* data);
++
++// Handle run end header
++void accept_run_end(char* data);
+ 
+ /**
+  * @struct Record
+@@ -130,31 +161,5 @@ unsigned int record_count(Record** rec);
+ // Get the key for the next record to process (key sorted)
+ uint64_t record_next(Record** rec);
+ 
+-
+-/**
+- * @struct RHDR
+- *
+- * RHDR: SNO/SNO+ run header
+-*/
+-typedef struct {
+-  uint32_t type;
+-  uint32_t date;
+-  uint32_t time;
+-  uint32_t daq_ver;
+-  uint32_t runmask;
+-  uint32_t first_event_id;
+-  uint32_t run_id;
+-} RunStart;
+-
+-typedef struct {
+-  uint32_t type;
+-  uint32_t date;
+-  uint32_t time;
+-  uint32_t daq_ver;
+-  uint32_t runmask;
+-  uint32_t last_event_id;
+-  uint32_t run_id;
+-} RunEnd;
+-
+ #endif
+ 
+diff --git a/src/listener.c b/src/listener.c
+index 1e69d85..dd53a29 100644
+--- a/src/listener.c
++++ b/src/listener.c
+@@ -138,6 +138,18 @@ void* listener_child(void* psock) {
+         break;
+       }
+ 
++      case (RUN_START_PACKET): {
++        recv_all(sock, packet_buffer+4, sizeof(RunStart));
++        accept_run_start(packet_buffer);
++        break;
++      }
++
++      case (RUN_END_PACKET): {
++        recv_all(sock, packet_buffer+4, sizeof(RunEnd));
++        accept_run_end(packet_buffer);
++        break;
++      }
++
+       default:
+         printf("Unknown packet type %u on socket %i\n", (int)type, sock);
+         char ss[50];
+diff --git a/src/listener.h b/src/listener.h
+index b7a1eb3..ad550ec 100644
+--- a/src/listener.h
++++ b/src/listener.h
+@@ -56,6 +56,8 @@ typedef enum {
+   CMD_PACKET,
+   PTB_PACKET,
+   DAQ_PACKET,
++  RUN_START_PACKET,
++  RUN_END_PACKET,
+   UNK_PACKET,
+ } PacketType;
+ 
