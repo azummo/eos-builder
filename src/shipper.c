@@ -33,8 +33,8 @@ uint32_t events_written;
 
 void handler(int signal);
 
-char fileid[80] = "";
-char filename[100] = "";
+char fileid[250] = "";
+char filename[270] = "";
 FILE* outfile;
 
 void send_all(int socket_handle, char* data, int size) {
@@ -88,8 +88,8 @@ void* shipper(void* ptr) {
   }
 
   signal(SIGINT, &handler);
-  int run_id = 0;
-  int subrun_id = 0;
+  int run_number = 0;
+  int subrun_number = 0;
 
   while (1) {
     uint64_t h_key = record_next(&headers);
@@ -101,33 +101,39 @@ void* shipper(void* ptr) {
 
       if (r && r->type == RUN_START && h_key <= e_key) {
         RunStart* rhdr = (RunStart*) r->data;
-        run_id = rhdr->run_id;
-        subrun_id = 0;
+        run_number = rhdr->run_number;
+        subrun_number = 0;
 
         if (outfile) {
-          printf("# new run %i started with run active.\n", run_id);
+          printf("# new run %i started with run active.\n", run_number);
           fclose(outfile);
           outfile = NULL;
         }
         struct stat sb;
-        if (stat(config->output_dir, &sb) == 0 && S_ISDIR(sb.st_mode)){
-          sprintf(fileid, "%s/run_%06i", config->output_dir, run_id);
+        if (stat(rhdr->outfile, &sb) == 0 && S_ISDIR(sb.st_mode)){
+          sprintf(fileid, "%s/eos_run_%06i", rhdr->outfile, run_number);
         }
 	else {
           printf("Output directory does not exist\n");
 	  printf("Outputting to current directory\n");
-          sprintf(fileid, "run_%06i", run_id);
+          sprintf(fileid, "eos_run_%06i", run_number);
         }
-        sprintf(filename, "%s_%03i.cdab", fileid, subrun_id);
-        printf("> Start run %i, key %li => %s\n", run_id, h_key, filename);
+        sprintf(filename, "%s_%03i.cdab", fileid, subrun_number);
+        printf("> Start run %i, key %li => %s\n", run_number, h_key, filename);
         outfile = fopen(filename, "wb+");
+
+        CDABHeader cdh;
+        cdh.record_type = RUN_START;
+        cdh.size = sizeof(RunStart);
+        fwrite(&cdh, sizeof(CDABHeader), 1, outfile);
+        fwrite(rhdr, sizeof(RunStart), 1, outfile);
       }
       else if (r && r->type == RUN_END && h_key >= e_key) {
         RunEnd* rhdr = (RunEnd*) r->data;
-        int run_id = rhdr->run_id;
+        int run_number = rhdr->run_number;
 
         if (outfile) {
-          printf("< End run %i, key %li => %s\n", run_id, h_key, filename);
+          printf("< End run %i, key %li => %s\n", run_number, h_key, filename);
           fclose(outfile);
           outfile = NULL;
         }
@@ -184,11 +190,11 @@ void* shipper(void* ptr) {
       }
 
       if (file_gigabytes_written > config->max_file_size) {
-        subrun_id++;
-        sprintf(filename, "%s_%03i.cdab", fileid, subrun_id);
+        subrun_number++;
+        sprintf(filename, "%s_%03i.cdab", fileid, subrun_number);
 	fclose(outfile);
         outfile = fopen(filename, "wb+");
-	printf("> Start subrun %i => %s\n", subrun_id, filename);
+	printf("> Start subrun %i => %s\n", subrun_number, filename);
         file_gigabytes_written = 0;
       }
     }

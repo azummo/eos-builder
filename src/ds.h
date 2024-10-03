@@ -102,19 +102,27 @@ unsigned int event_count();
 uint8_t event_ready(Event* s);
 
 /**
- * @struct RHDR
+ * @struct RunStart
  *
- * RHDR: SNO/SNO+ run header
+ * Eos run header
 */
 typedef struct {
   uint32_t type;
-  uint32_t date;
-  uint32_t time;
-  uint32_t daq_ver;
-  uint32_t runmask;
+  uint32_t run_number;
+  char outfile[200];
+  int run_type;
+  int source_type;
+  float source_x;
+  float source_y;
+  float source_z;
+  float source_theta;
+  float source_phi;
+  int fiber_number;
+  float laserball_size;
+  float laser_wavelength;
   uint64_t first_event_id;
-  uint32_t run_id;
 } RunStart;
+
 
 typedef struct {
   uint32_t type;
@@ -123,7 +131,7 @@ typedef struct {
   uint32_t daq_ver;
   uint32_t runmask;
   uint64_t last_event_id;
-  uint32_t run_id;
+  uint32_t run_number;
 } RunEnd;
 
 // Handle run start header

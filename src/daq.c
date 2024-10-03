@@ -33,9 +33,12 @@ CAENEvent* make_caenevent(int i, DigitizerData* caen, CAENEvent* e) {
     e->channels[j].dynamic_range = caen->channels[j].dynamic_range;
     e->channels[j].pattern = caen->channels[j].patterns[i];
     memcpy(e->channels[j].samples, caen->channels[j].samples[i], e->samples*sizeof(uint16_t));
+/*
+    // Sets unused samples to UINT16_MAX
     if(e->samples < 200) {
       memset(&e->channels[j].samples[e->samples], UINT16_MAX, (200-e->samples)*sizeof(uint16_t));
     }
+*/
   }
 
   return e;
