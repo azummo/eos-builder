@@ -90,6 +90,7 @@ void* shipper(void* ptr) {
   signal(SIGINT, &handler);
   int run_number = 0;
   int subrun_number = 0;
+  RunStart* rhdr;
 
   while (1) {
     uint64_t h_key = record_next(&headers);
@@ -100,7 +101,7 @@ void* shipper(void* ptr) {
       Record* r = record_pop(&headers, h_key);
 
       if (r && r->type == RUN_START && h_key <= e_key) {
-        RunStart* rhdr = (RunStart*) r->data;
+        rhdr = (RunStart*) r->data;
         run_number = rhdr->run_number;
         subrun_number = 0;
 
@@ -194,6 +195,13 @@ void* shipper(void* ptr) {
         sprintf(filename, "%s_%03i.cdab", fileid, subrun_number);
 	fclose(outfile);
         outfile = fopen(filename, "wb+");
+
+        CDABHeader cdh;
+        cdh.record_type = RUN_START;
+        cdh.size = sizeof(RunStart);
+        fwrite(&cdh, sizeof(CDABHeader), 1, outfile);
+        fwrite(rhdr, sizeof(RunStart), 1, outfile);
+
 	printf("> Start subrun %i => %s\n", subrun_number, filename);
         file_gigabytes_written = 0;
       }
