@@ -1,4 +1,6 @@
 *.swp
+*.cdab
+*.hdf5
 bin
 build
 include
