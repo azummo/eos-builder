@@ -195,6 +195,7 @@ void* listener(void* ptr) {
     else {
       thread_sockfd[thread_index] = newsockfd;
       printf("Spawning listener_child thread with index %i\n", thread_index);
+      memset(&offsets, 0, sizeof(time_offsets));
       pthread_create(&(threads[thread_index]),
             NULL,
             listener_child,
