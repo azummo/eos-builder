@@ -90,7 +90,7 @@ void* shipper(void* ptr) {
   signal(SIGINT, &handler);
   int run_number = 0;
   int subrun_number = 0;
-  RunStart* rhdr;
+  RunStart rhdr;
 
   while (1) {
     uint64_t h_key = record_next(&headers);
@@ -101,8 +101,9 @@ void* shipper(void* ptr) {
       Record* r = record_pop(&headers, h_key);
 
       if (r && r->type == RUN_START && h_key <= e_key) {
-        rhdr = (RunStart*) r->data;
-        run_number = rhdr->run_number;
+        RunStart* run_start = (RunStart*) r->data;
+        rhdr = *run_start;
+        run_number = rhdr.run_number;
         subrun_number = 0;
 
         if (outfile) {
@@ -111,8 +112,8 @@ void* shipper(void* ptr) {
           outfile = NULL;
         }
         struct stat sb;
-        if (stat(rhdr->outfile, &sb) == 0 && S_ISDIR(sb.st_mode)){
-          sprintf(fileid, "%s/eos_run_%06i", rhdr->outfile, run_number);
+        if (stat(rhdr.outfile, &sb) == 0 && S_ISDIR(sb.st_mode)){
+          sprintf(fileid, "%s/eos_run_%06i", rhdr.outfile, run_number);
         }
 	else {
           printf("Output directory does not exist\n");
@@ -127,17 +128,19 @@ void* shipper(void* ptr) {
         cdh.record_type = RUN_START;
         cdh.size = sizeof(RunStart);
         fwrite(&cdh, sizeof(CDABHeader), 1, outfile);
-        fwrite(rhdr, sizeof(RunStart), 1, outfile);
+        fwrite(&rhdr, sizeof(RunStart), 1, outfile);
       }
       else if (r && r->type == RUN_END && h_key >= e_key) {
-        RunEnd* rhdr = (RunEnd*) r->data;
+/*        RunEnd* rhdr = (RunEnd*) r->data;
         int run_number = rhdr->run_number;
 
         if (outfile) {
           printf("< End run %i, key %li => %s\n", run_number, h_key, filename);
           fclose(outfile);
           outfile = NULL;
+
         }
+*/
       }
     }
 
@@ -200,7 +203,7 @@ void* shipper(void* ptr) {
         cdh.record_type = RUN_START;
         cdh.size = sizeof(RunStart);
         fwrite(&cdh, sizeof(CDABHeader), 1, outfile);
-        fwrite(rhdr, sizeof(RunStart), 1, outfile);
+        fwrite(&rhdr, sizeof(RunStart), 1, outfile);
 
 	printf("> Start subrun %i => %s\n", subrun_number, filename);
         file_gigabytes_written = 0;
