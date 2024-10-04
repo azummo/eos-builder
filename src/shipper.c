@@ -35,6 +35,7 @@ void handler(int signal);
 
 char fileid[250] = "";
 char filename[270] = "";
+char convert_command[500] = "";
 FILE* outfile;
 
 void send_all(int socket_handle, char* data, int size) {
@@ -55,6 +56,12 @@ void send_all(int socket_handle, char* data, int size) {
   assert(total == size);
 }
 
+void *convert_function(void *arg) {
+    char *command = (char *)arg;
+    printf("Executing command: %s\n", command);
+    system(command);
+    return NULL;
+}
 
 void* shipper(void* ptr) {
   outfile = NULL;
@@ -194,6 +201,7 @@ void* shipper(void* ptr) {
       }
 
       if (file_gigabytes_written > config->max_file_size) {
+        int last_subrun_number = subrun_number;
         subrun_number++;
         sprintf(filename, "%s_%03i.cdab", fileid, subrun_number);
 	fclose(outfile);
@@ -207,6 +215,17 @@ void* shipper(void* ptr) {
 
 	printf("> Start subrun %i => %s\n", subrun_number, filename);
         file_gigabytes_written = 0;
+
+        printf("> Processing subrun %i", last_subrun_number);
+        pthread_t convert_thread_id;
+        // FIXME Works but causes warning due to char sizes
+        sprintf(convert_command,"%s %s_%03i.cdab %s_%03i.hdf5", config->converter, 
+                fileid, last_subrun_number, fileid, last_subrun_number);
+        int result = pthread_create(&convert_thread_id, NULL, convert_function, convert_command);
+        if (result != 0) {
+          perror("pthread_create failed");
+        }
+        pthread_detach(convert_thread_id);
       }
     }
 

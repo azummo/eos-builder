@@ -24,6 +24,9 @@ Config* config_parse(char* config_file) {
   config->output_dir = \
     (char*)json_object_get_string(get_obj(json, "builder", "output_dir"));
 
+  config->converter = \
+    (char*)json_object_get_string(get_obj(json, "builder", "converter"));
+
   config->max_file_size = json_object_get_double(get_obj(json, "builder", "max_file_size"));
 
   config->evb_slice = json_object_get_double(get_obj(json, "builder", "slice"));

@@ -9,6 +9,7 @@ typedef struct {
   char* file;  //!< Config file
 
   char* output_dir; //!< Output directory
+  char* converter; //!< Location of cdab_to_hdf5 converter
   double max_file_size; //!< Max file size in gigabytes before creating new subrun
 
   int evb_port;  //!< Event builder port
