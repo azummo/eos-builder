@@ -23,8 +23,8 @@ CAENEvent* make_caenevent(int i, DigitizerData* caen, CAENEvent* e) {
   e->ns_sample = caen->ns_sample;
   e->channel_enabled_mask = caen->channel_enabled_mask;
   e->counter = caen->counters[i];
-  e->timetag = caen->timetags[i];
-  e->exttimetag = caen->exttimetags[i];
+  e->timetags = caen->timetags[i];
+  e->exttimetags = caen->exttimetags[i];
 
   for (int j=0; j<16; j++) {
     e->channels[j].chID = caen->channels[j].chID;
@@ -71,9 +71,9 @@ void accept_daq(char* data) {
       printf("Builder recieved > 20 events: nEvents = %i\n",p->nEvents);
       break;
     }
-    uint64_t timetag = p->timetags[i];
-    uint64_t exttimetag = p->exttimetags[i];
-    uint64_t t = (exttimetag << 32) | timetag;
+    uint64_t timetags = p->timetags[i];
+    uint64_t exttimetags = p->exttimetags[i];
+    uint64_t t = (exttimetags << 32) | timetags;
 
     if (offsets.caen[digid] == 0) {
       offsets.caen[digid] = t;

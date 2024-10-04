@@ -57,8 +57,8 @@ typedef struct {
   float ns_sample;
   uint16_t channel_enabled_mask;
   uint32_t counter;
-  uint32_t timetag;
-  uint16_t exttimetag;
+  uint32_t timetags;
+  uint16_t exttimetags;
   CAENChannel channels[16];
 } CAENEvent;
 
