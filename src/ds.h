@@ -109,7 +109,7 @@ uint8_t event_ready(Event* s);
 typedef struct {
   uint32_t type;
   uint32_t run_number;
-  char outfile[200];
+  char outdir[200];
   int run_type;
   int source_type;
   float source_x;

@@ -112,8 +112,8 @@ void* shipper(void* ptr) {
           outfile = NULL;
         }
         struct stat sb;
-        if (stat(rhdr.outfile, &sb) == 0 && S_ISDIR(sb.st_mode)){
-          sprintf(fileid, "%s/eos_run_%06i", rhdr.outfile, run_number);
+        if (stat(rhdr.outdir, &sb) == 0 && S_ISDIR(sb.st_mode)){
+          sprintf(fileid, "%s/eos_run_%06i", rhdr.outdir, run_number);
         }
 	else {
           printf("Output directory does not exist\n");
