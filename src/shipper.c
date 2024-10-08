@@ -31,6 +31,8 @@ uint32_t bytes_written;
 double file_gigabytes_written;
 uint32_t events_written;
 
+int ninactive;
+
 void handler(int signal);
 
 char fileid[250] = "";
@@ -61,6 +63,18 @@ void *convert_function(void *arg) {
     printf("Executing command: %s\n", command);
     system(command);
     return NULL;
+}
+
+void convert_cdab(char* fileid, int last_subrun_number) {
+ pthread_t convert_thread_id;
+ // FIXME Works but causes warning due to char sizes
+ sprintf(convert_command,"%s %s_%03i.cdab %s_%03i.hdf5", config->converter,
+         fileid, last_subrun_number, fileid, last_subrun_number);
+ int result = pthread_create(&convert_thread_id, NULL, convert_function, convert_command);
+ if (result != 0) {
+   perror("pthread_create failed");
+ }
+  pthread_detach(convert_thread_id);
 }
 
 void* shipper(void* ptr) {
@@ -97,7 +111,8 @@ void* shipper(void* ptr) {
   signal(SIGINT, &handler);
   int run_number = 0;
   int subrun_number = 0;
-  RunStart rhdr;
+  RunStart rs;
+  RunEnd re;
 
   while (1) {
     uint64_t h_key = record_next(&headers);
@@ -109,8 +124,8 @@ void* shipper(void* ptr) {
 
       if (r && r->type == RUN_START && h_key <= e_key) {
         RunStart* run_start = (RunStart*) r->data;
-        rhdr = *run_start;
-        run_number = rhdr.run_number;
+        rs = *run_start;
+        run_number = rs.run_number;
         subrun_number = 0;
 
         if (outfile) {
@@ -119,8 +134,8 @@ void* shipper(void* ptr) {
           outfile = NULL;
         }
         struct stat sb;
-        if (stat(rhdr.outdir, &sb) == 0 && S_ISDIR(sb.st_mode)){
-          sprintf(fileid, "%s/eos_run_%06i", rhdr.outdir, run_number);
+        if (stat(rs.outdir, &sb) == 0 && S_ISDIR(sb.st_mode)){
+          sprintf(fileid, "%seos_run_%06i", rs.outdir, run_number);
         }
 	else {
           printf("Output directory does not exist\n");
@@ -135,19 +150,26 @@ void* shipper(void* ptr) {
         cdh.record_type = RUN_START;
         cdh.size = sizeof(RunStart);
         fwrite(&cdh, sizeof(CDABHeader), 1, outfile);
-        fwrite(&rhdr, sizeof(RunStart), 1, outfile);
+        fwrite(&rs, sizeof(RunStart), 1, outfile);
       }
-      else if (r && r->type == RUN_END && h_key >= e_key) {
-/*        RunEnd* rhdr = (RunEnd*) r->data;
-        int run_number = rhdr->run_number;
-
+      else if (r && r->type == RUN_END) { // && h_key >= e_key) {
+        RunEnd* run_end = (RunEnd*) r->data;
+        re = *run_end;
         if (outfile) {
+
+          CDABHeader cdh;
+          cdh.record_type = RUN_END;
+          cdh.size = sizeof(RunEnd);
+          fwrite(&cdh, sizeof(CDABHeader), 1, outfile);
+          fwrite(&re, sizeof(RunEnd), 1, outfile);
+
           printf("< End run %i, key %li => %s\n", run_number, h_key, filename);
           fclose(outfile);
           outfile = NULL;
-
+          sprintf(filename,"NO RUN ACTIVE");
+          printf("> Processing subrun %i\n", subrun_number);
+          convert_cdab(fileid, subrun_number);
         }
-*/
       }
     }
 
@@ -156,17 +178,8 @@ void* shipper(void* ptr) {
       continue;
     }
 
-    if (!outfile) {
-      printf("# events received with no run active, key %li.\n", e_key);
-      uuid_t uuid;
-      char suuid[400];
-      uuid_generate(uuid);
-      uuid_unparse(uuid, suuid);
-      snprintf(filename, 500, "default_%s.cdab", suuid);
-      printf("> Default run %s, key %li => %s\n", uuid, e_key, filename);
-    }
-
     Record* r = record_pop(&records, e_key);
+
     if (!r) {
       printf("popped null Record pointer!? key=%li\n", e_key);
       continue;
@@ -180,6 +193,21 @@ void* shipper(void* ptr) {
         continue;
       }
 
+    if (!outfile) {
+      ninactive++;
+/*
+      printf("# events received with no run active, key %li.\n", e_key);
+      uuid_t uuid;
+      char suuid[400];
+      uuid_generate(uuid);
+      uuid_unparse(uuid, suuid);
+      snprintf(filename, 500, "default_%s.cdab", suuid);
+      printf("> Default run %s, key %li => %s\n", uuid, e_key, filename);
+*/
+      free(e);
+      continue;
+    }
+
       if (!event_ready(e)) {
         printf("# write partial key %li (ptb %i, caen %i)\n",
                e->id, e->ptb_status, e->caen_status);
@@ -190,7 +218,6 @@ void* shipper(void* ptr) {
       cdh.size = sizeof(Event);
       fwrite(&cdh, sizeof(CDABHeader), 1, outfile);
       fwrite(e, sizeof(Event), 1, outfile);
-      free(e);
       bytes_written += sizeof(Event) + sizeof(CDABHeader);
       file_gigabytes_written += (double)(sizeof(Event) + sizeof(CDABHeader))/1e9;
       events_written++;
@@ -199,6 +226,8 @@ void* shipper(void* ptr) {
         send_all(sockfd, (char*) &cdh, sizeof(CDABHeader));
         send_all(sockfd, (char*) e, sizeof(Event));
       }
+
+      free(e);
 
       if (file_gigabytes_written > config->max_file_size) {
         int last_subrun_number = subrun_number;
@@ -211,21 +240,13 @@ void* shipper(void* ptr) {
         cdh.record_type = RUN_START;
         cdh.size = sizeof(RunStart);
         fwrite(&cdh, sizeof(CDABHeader), 1, outfile);
-        fwrite(&rhdr, sizeof(RunStart), 1, outfile);
+        fwrite(&rs, sizeof(RunStart), 1, outfile);
 
 	printf("> Start subrun %i => %s\n", subrun_number, filename);
         file_gigabytes_written = 0;
 
-        printf("> Processing subrun %i", last_subrun_number);
-        pthread_t convert_thread_id;
-        // FIXME Works but causes warning due to char sizes
-        sprintf(convert_command,"%s %s_%03i.cdab %s_%03i.hdf5", config->converter, 
-                fileid, last_subrun_number, fileid, last_subrun_number);
-        int result = pthread_create(&convert_thread_id, NULL, convert_function, convert_command);
-        if (result != 0) {
-          perror("pthread_create failed");
-        }
-        pthread_detach(convert_thread_id);
+        printf("> Processing subrun %i\n", last_subrun_number);
+        convert_cdab(fileid, last_subrun_number);
       }
     }
 

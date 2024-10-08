@@ -20,6 +20,7 @@ extern Event* events;
 extern Record* records;
 extern Record* headers;
 extern pthread_mutex_t record_lock;
+extern int ninactive;
 
 extern uint32_t bytes_written;
 extern uint32_t events_written;
@@ -65,9 +66,15 @@ void* monitor(void* ptr) {
     // Status message
     printf("%% q %i", queued);
     if (nstale > 0) {
-      printf(" [%i!]", nstale);
+      printf(" [%is!]", nstale);
     }
+
     printf(", w %i/%1.2fHz/%1.2fkBps => %s\n", evt, erate, wrate/1000, filename);
+
+    if (ninactive > 0) {
+      printf("Recieved %i events with no run active! Data will be lost!\n", ninactive);
+      ninactive = 0;
+    }
 
     sleep(5);
   }

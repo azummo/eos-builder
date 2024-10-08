@@ -1,6 +1,6 @@
 {
   "builder": {
-    "output_dir": "/mnt/raid/data/water_fill/evb-default/",
+    "output_dir": "/mnt/raid/data/evb/default/",
     "converter": "/home/eos/eos-daq-scripts/cdab_to_hdf5/cdab_to_hdf5",
     "max_file_size": 1.0,
     "slice": 4,
