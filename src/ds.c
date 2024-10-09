@@ -4,13 +4,16 @@
 #include <string.h>
 #include <pthread.h>
 #include <jemalloc/jemalloc.h>
+#include <evb/listener.h>
 #include <evb/config.h>
 #include <evb/ds.h>
+#include <evb/daq.h>
 
 extern Config* config;
 extern Event* events;
 extern Record* records;
 extern Record* headers;
+extern time_offsets offsets;
 extern pthread_mutex_t record_lock;
 
 /** Events */
@@ -74,8 +77,9 @@ void accept_run_start(char* data) {
 
 void accept_run_end(char* data) {
   RunEnd* re = (RunEnd*) (data+4);
-  re->last_event_id /= config->evb_slice;
-  record_push(&headers, re->last_event_id, RUN_END, (void*)re);
+  int8_t digid = digid_from_name(re->last_board_name);
+  re->last_key = daq_key(re->last_event_id - offsets.caen[digid], NULL);
+  record_push(&headers, re->last_key, RUN_END, (void*)re);
 }
 
 /** Output records. */

@@ -126,12 +126,10 @@ typedef struct {
 
 typedef struct {
   uint32_t type;
-  uint32_t date;
-  uint32_t time;
-  uint32_t daq_ver;
-  uint32_t runmask;
-  uint64_t last_event_id;
   uint32_t run_number;
+  uint64_t last_event_id;
+  char last_board_name[50];
+  uint64_t last_key;
 } RunEnd;
 
 // Handle run start header

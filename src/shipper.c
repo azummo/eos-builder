@@ -67,7 +67,6 @@ void *convert_function(void *arg) {
 
 void convert_cdab(char* fileid, int last_subrun_number) {
  pthread_t convert_thread_id;
- // FIXME Works but causes warning due to char sizes
  sprintf(convert_command,"%s %s_%03i.cdab %s_%03i.hdf5", config->converter,
          fileid, last_subrun_number, fileid, last_subrun_number);
  int result = pthread_create(&convert_thread_id, NULL, convert_function, convert_command);
@@ -113,14 +112,18 @@ void* shipper(void* ptr) {
   int subrun_number = 0;
   RunStart rs;
   RunEnd re;
+  Record* r;
+  bool end_run = false;
+  uint64_t h_key = -1;
+  uint64_t e_key = -1;
 
   while (1) {
-    uint64_t h_key = record_next(&headers);
-    uint64_t e_key = record_next(&records);
+    if(!end_run) h_key = record_next(&headers);
+    e_key = record_next(&records);
 
     // Handle run start/stop
     if (h_key != -1) {
-      Record* r = record_pop(&headers, h_key);
+      if(!end_run) r = record_pop(&headers, h_key);
 
       if (r && r->type == RUN_START && h_key <= e_key) {
         RunStart* run_start = (RunStart*) r->data;
@@ -152,7 +155,10 @@ void* shipper(void* ptr) {
         fwrite(&cdh, sizeof(CDABHeader), 1, outfile);
         fwrite(&rs, sizeof(RunStart), 1, outfile);
       }
-      else if (r && r->type == RUN_END) { // && h_key >= e_key) {
+      else if (r && r->type == RUN_END && h_key >= e_key) {
+        end_run = true;
+      }
+      else if (r && r->type == RUN_END && (h_key < e_key || e_key == -1)) {
         RunEnd* run_end = (RunEnd*) r->data;
         re = *run_end;
         if (outfile) {
@@ -169,6 +175,7 @@ void* shipper(void* ptr) {
           sprintf(filename,"NO RUN ACTIVE");
           printf("> Processing subrun %i\n", subrun_number);
           convert_cdab(fileid, subrun_number);
+	  end_run = false;
         }
       }
     }

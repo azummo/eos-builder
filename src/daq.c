@@ -50,16 +50,20 @@ uint64_t daq_key(uint64_t timestamp, uint64_t* ts) {
   return t / config->evb_slice;
 }
 
-void accept_daq(char* data) {
-  DigitizerData* p = (DigitizerData*) (data+4);
+int8_t digid_from_name(char* name) {
   int8_t digid = -1;
-
   for (int i=0; i<config->dig_ndig; i++) {
-    if (strncmp(p->name, config->dig_ids[i], 50) == 0) {
+    if (strncmp(name, config->dig_ids[i], 50) == 0) {
       digid = i;
       break;
     }
   }
+  return digid;
+}
+
+void accept_daq(char* data) {
+  DigitizerData* p = (DigitizerData*) (data+4);
+  int8_t digid = digid_from_name(p->name);
 
   if (digid == -1) {
     printf("# unknown digitizer %s\n", p->name);

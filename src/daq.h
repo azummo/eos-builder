@@ -56,6 +56,14 @@ CAENEvent* make_caenevent(int i, DigitizerData* caen, CAENEvent* e);
 uint64_t daq_key(uint64_t timestamp, uint64_t* ts);
 
 /**
+ * Convert string of digitizer serial number to its logical id
+ *
+ * @param name String of the digitizer serial number
+ * @return The digitizer id
+ */
+int8_t digid_from_name(char* name);
+
+/**
  * Parse a DAQ packet.
  * 
  * Fills DAQ data into the event hash table.
