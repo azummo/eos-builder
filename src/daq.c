@@ -27,12 +27,13 @@ CAENEvent* make_caenevent(int i, DigitizerData* caen, CAENEvent* e) {
   e->exttimetags = caen->exttimetags[i];
 
   for (int j=0; j<16; j++) {
-    e->channels[j].chID = caen->channels[j].chID;
-    e->channels[j].offset = caen->channels[j].offset;
-    e->channels[j].threshold = caen->channels[j].threshold;
-    e->channels[j].dynamic_range = caen->channels[j].dynamic_range;
-    e->channels[j].pattern = caen->channels[j].patterns[i];
-    memcpy(e->channels[j].samples, caen->channels[j].samples[i], e->samples*sizeof(uint16_t));
+    int chan = j%2;
+    e->channels[j].chID = caen->channels[chan].chID;
+    e->channels[j].offset = caen->channels[chan].offset;
+    e->channels[j].threshold = caen->channels[chan].threshold;
+    e->channels[j].dynamic_range = caen->channels[chan].dynamic_range;
+    e->channels[j].pattern = caen->channels[chan].patterns[i];
+    memcpy(e->channels[j].samples, caen->channels[chan].samples[i], e->samples*sizeof(uint16_t));
 /*
     // Sets unused samples to UINT16_MAX
     if(e->samples < 200) {
@@ -64,8 +65,9 @@ int8_t digid_from_name(char* name) {
 void accept_daq(char* data) {
   DigitizerData* p = (DigitizerData*) (data+4);
   int8_t digid = digid_from_name(p->name);
-
-  if (digid == -1) {
+  for(digid=0;digid<17;digid++)
+{
+  if(digid == -1) {
     printf("# unknown digitizer %s\n", p->name);
     return;
   }
@@ -129,5 +131,6 @@ void accept_daq(char* data) {
       pthread_mutex_unlock(&record_lock);
     }
   }
+}
 }
 

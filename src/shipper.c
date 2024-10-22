@@ -181,7 +181,7 @@ void* shipper(void* ptr) {
     }
 
     if (e_key == -1) {
-      sleep(1);
+      usleep(100000);
       continue;
     }
 
