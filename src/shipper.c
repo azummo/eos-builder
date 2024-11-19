@@ -63,7 +63,6 @@ void send_all(int socket_handle, char* data, int size) {
 
 void *convert_function(void *arg) {
     char *command = (char *)arg;
-    printf("Executing command: %s\n", command);
     system(command);
     return NULL;
 }
@@ -182,8 +181,7 @@ void* shipper(void* ptr) {
     }
 
     if (e_key == -1) {
-      sleep(1);
-//      usleep(1000);
+      usleep(100);
       continue;
     }
 

@@ -89,24 +89,33 @@ void record_push(Record** rec, uint64_t key, RecordType type, void* data) {
   r->id = key;
   r->type = type;
   r->data = data;
+  pthread_mutex_lock(&record_lock);
   HASH_ADD(hh, *rec, id, sizeof(uint64_t), r);
+  pthread_mutex_unlock(&record_lock);
 }
 
 Record* record_at(Record** rec, uint64_t key) {
   Record* r;
+  pthread_mutex_lock(&record_lock);
   HASH_FIND(hh, *rec, &key, sizeof(uint64_t), r);
+  pthread_mutex_unlock(&record_lock);
   return r;
 }
 
 Record* record_pop(Record** rec, uint64_t key) {
   Record* r = NULL;
+  pthread_mutex_lock(&record_lock);
   HASH_FIND(hh, *rec, &key, sizeof(uint64_t), r);
   if (r) HASH_DEL(*rec, r);
+  pthread_mutex_unlock(&record_lock);
   return r;
 }
 
 unsigned int record_count(Record** rec) {
-  return HASH_COUNT(*rec);
+  pthread_mutex_lock(&record_lock);
+  unsigned int count = HASH_COUNT(*rec);
+  pthread_mutex_unlock(&record_lock);
+  return count;
 }
 
 int64_t record_by_id(const Record* a, const Record* b) {

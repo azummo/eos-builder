@@ -57,9 +57,7 @@ void* monitor(void* ptr) {
       if (timediff(e->creation_time, tw_n) > 5 && !event_ready(e)) {
         nstale++;
         //printf("# stale key %li (ptb %i, caen %i)\n", e->id, e->ptb_status, e->caen_status);
-        pthread_mutex_lock(&record_lock);
         record_push(&records, e->id, DETECTOR_EVENT, (void*)e);
-        pthread_mutex_unlock(&record_lock);
       }
     }
 

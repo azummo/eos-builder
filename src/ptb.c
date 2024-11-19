@@ -104,9 +104,7 @@ void accept_ptb(char* data) {
       }
 
       if (event_ready(e)) {
-        pthread_mutex_lock(&record_lock);
         record_push(&records, key, DETECTOR_EVENT, (void*)e);
-        pthread_mutex_unlock(&record_lock);
       }
     }
     else if (temp_word->word_type == ptb_t_fback) {}
