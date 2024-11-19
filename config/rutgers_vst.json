@@ -1,6 +1,6 @@
 {
   "builder": {
-    "output_dir": "/home/eos/eos-builder/data",
+    "output_dir": "/home/eos/eos-builder/data/",
     "converter": "ls",
     "max_file_size": 1.0,
     "slice": 4,

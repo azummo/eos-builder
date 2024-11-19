@@ -20,11 +20,29 @@
 
 /** Output record types. */
 typedef enum {
-  EMPTY,
-  DETECTOR_EVENT,
-  RUN_START,
-  RUN_END,
+  EMPTY = 0,
+  DETECTOR_EVENT = 1,
+  RUN_START = 2,
+  RUN_END = 3,
 } RecordType;
+
+typedef enum {
+  DIAGNOSTIC = 0,
+  PHYSICS = 1,
+  FIBER_CALIBRATION = 2,
+  DEPLOYED_SOURCE = 3
+} RunType;
+
+typedef enum {
+  LASERBALL = 0,
+  AMBE = 1,
+  PUBE = 2,
+  CS137 = 3,
+  DIRECTIONAL_SR90 = 4,
+  DIRECTIONAL_RU106 = 5,
+  THORIUM = 6,
+  CHERENKOV = 7
+} SourceType;
 
 /**
  * @struct CDABHeader
@@ -122,7 +140,6 @@ typedef struct {
   float laser_wavelength;
   uint64_t first_event_id;
 } RunStart;
-
 
 typedef struct {
   uint32_t type;

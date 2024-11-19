@@ -45,6 +45,7 @@ int main(int argc, char* argv[]) {
     RunStart* rhdr = (RunStart*) malloc(sizeof(RunStart));
     rhdr->type = RUN_START;
     rhdr->run_number = 0;
+    sprintf(rhdr->outdir, config->output_dir);
     record_push(&headers, 0, RUN_START, rhdr);
 
     // launch listener (input), shipper (output), monitor threads

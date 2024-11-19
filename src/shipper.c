@@ -40,6 +40,9 @@ char filename[270] = "";
 char convert_command[500] = "";
 FILE* outfile;
 
+RunStart rs;
+RunEnd re;
+
 void send_all(int socket_handle, char* data, int size) {
   int total = 0;
   int bytesleft = size;
@@ -110,8 +113,6 @@ void* shipper(void* ptr) {
   signal(SIGINT, &handler);
   int run_number = 0;
   int subrun_number = 0;
-  RunStart rs;
-  RunEnd re;
   Record* r;
   bool end_run = false;
   uint64_t h_key = -1;
@@ -141,7 +142,7 @@ void* shipper(void* ptr) {
           sprintf(fileid, "%seos_run_%06i", rs.outdir, run_number);
         }
 	else {
-          printf("Output directory does not exist\n");
+          printf("Output directory %s does not exist\n", rs.outdir);
 	  printf("Outputting to current directory\n");
           sprintf(fileid, "eos_run_%06i", run_number);
         }
@@ -182,6 +183,7 @@ void* shipper(void* ptr) {
 
     if (e_key == -1) {
       sleep(1);
+//      usleep(1000);
       continue;
     }
 

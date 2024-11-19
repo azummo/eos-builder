@@ -7,6 +7,7 @@
 extern Config* config;
 extern Event* events;
 extern Record* records;
+extern RunStart rs;
 
 extern pthread_mutex_t record_lock;
 extern time_offsets offsets;
@@ -82,8 +83,18 @@ void accept_ptb(char* data) {
         }
 
         if (e->ptb_status) {
-          printf("# collision for ptb, key %li!\n", key);
-          continue;
+          if (rs.source_type == AMBE) {
+            if(e->ptb.timestamp == t->timestamp - 2) {}
+            else if (e->ptb.timestamp == t->timestamp + 2) continue;
+            else {
+              printf("# collision for ptb, key %li!\n", key);
+              continue;
+            }
+          }
+          else {
+            printf("# collision for ptb, key %li!\n", key);
+            continue;
+          }
         }
 
         pthread_mutex_lock(&e->lock);  // what happens if a lock is destroyed while we wait?
