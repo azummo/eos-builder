@@ -8,4 +8,3 @@
 #define VERSION_STRING "1.0.0"
 
 #endif // VERSION_H
-
