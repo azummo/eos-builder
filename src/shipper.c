@@ -20,6 +20,7 @@
 #include <evb/config.h>
 #include <evb/shipper.h>
 #include <evb/ds.h>
+#include <evb/version.h>
 
 extern Config* config;
 extern Event* events;
@@ -128,6 +129,9 @@ void* shipper(void* ptr) {
       if (r && r->type == RUN_START && h_key <= e_key) {
         RunStart* run_start = (RunStart*) r->data;
         rs = *run_start;
+        rs.version_major = VERSION_MAJOR;
+        rs.version_minor = VERSION_MINOR;
+        rs.version_patch = VERSION_PATCH;
         run_number = rs.run_number;
         subrun_number = 0;
 

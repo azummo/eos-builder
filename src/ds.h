@@ -139,6 +139,9 @@ typedef struct {
   float laserball_size;
   float laser_wavelength;
   uint64_t first_event_id;
+  uint32_t version_major;
+  uint32_t version_minor;
+  uint32_t version_patch;
 } RunStart;
 
 typedef struct {
