@@ -14,6 +14,7 @@ extern Event* events;
 extern Record* records;
 extern Record* headers;
 extern time_offsets offsets;
+extern pthread_mutex_t events_lock;
 extern pthread_mutex_t record_lock;
 
 /** Events */
@@ -37,17 +38,25 @@ Event* event_create(uint64_t key) {
 
 Event* event_at(uint64_t key) {
   Event* e;
+  pthread_mutex_lock(&events_lock);
   HASH_FIND(hh, events, &key, sizeof(uint64_t), e);
+  pthread_mutex_unlock(&events_lock);
   return e;
 }
 
 void event_push(uint64_t key, Event* e) {
+  pthread_mutex_lock(&events_lock);
   HASH_ADD(hh, events, id, sizeof(uint64_t), e);
+  pthread_mutex_unlock(&events_lock);
 }
 
 Event* event_pop(uint64_t key) {
   Event* e = event_at(key);
-  if (e) HASH_DEL(events, e);
+  if (e) {
+    pthread_mutex_lock(&events_lock);
+    HASH_DEL(events, e);
+    pthread_mutex_unlock(&events_lock);
+  }
   return e;
 }
 

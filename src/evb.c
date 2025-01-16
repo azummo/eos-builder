@@ -26,6 +26,7 @@ Event* events = NULL;
 Record* records = NULL;
 Record* headers = NULL;
 pthread_mutex_t record_lock;
+pthread_mutex_t events_lock;
 
 int main(int argc, char* argv[]) {
     printf("* eos-builder\n");
@@ -40,6 +41,7 @@ int main(int argc, char* argv[]) {
     }
 
     pthread_mutex_init(&record_lock, NULL);
+    pthread_mutex_init(&events_lock, NULL);
 
     // fake RunStart for testing
     RunStart* rhdr = (RunStart*) malloc(sizeof(RunStart));
