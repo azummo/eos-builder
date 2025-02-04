@@ -65,8 +65,10 @@ void accept_ptb(char* data) {
 
       if (!e_mask) {
         e = event_create(key);
+        pthread_mutex_lock(&e->lock);
         memcpy((void*)(&e->ptb), (void*)t, sizeof(ptb_trigger_t));
         e->ptb_status = 1;
+        pthread_mutex_unlock(&e->lock);
       }
       else {
         if(e_mask == 0x1) {

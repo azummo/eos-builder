@@ -95,8 +95,10 @@ void accept_daq(char* data) {
 
     if (!e_mask) {
       e = event_create(key);
+      pthread_mutex_lock(&e->lock);
       make_caenevent(i, p, &e->caen[digid]);
       e->caen_status |= (1 << digid);
+      pthread_mutex_unlock(&e->lock);
     }
     else {
       if (e_mask == 0x1) {
